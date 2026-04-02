@@ -1,0 +1,152 @@
+@use './variables.scss';
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background-color: variables.$bg-color;
+  color: variables.$text-primary;
+  line-height: 1.6;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+ul, ol {
+  list-style: none;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  outline: none;
+  background: none;
+}
+
+input, textarea {
+  outline: none;
+  border: none;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+  
+  &:hover {
+    background: #a8a8a8;
+  }
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.page-container {
+  padding-top: 70px;
+  min-height: 100vh;
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, variables.$primary-color, #7c3aed);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.card {
+  background: white;
+  border-radius: variables.$radius-lg;
+  box-shadow: variables.$shadow-md;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    box-shadow: variables.$shadow-lg;
+  }
+}
+
+.section-header {
+  text-align: center;
+  margin-bottom: 40px;
+  
+  h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+    color: variables.$text-primary;
+  }
+  
+  p {
+    color: variables.$text-secondary;
+    font-size: 1.1rem;
+  }
+}
+
+.difficulty-tag {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  
+  &.easy {
+    background: #dcfce7;
+    color: #166534;
+  }
+  
+  &.medium {
+    background: #fef3c7;
+    color: #92400e;
+  }
+  
+  &.hard {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.slide-enter-active,
+.slide-leave-active {
+  transition: transform 0.3s ease;
+}
+
+.slide-enter-from {
+  transform: translateX(-100%);
+}
+
+.slide-leave-to {
+  transform: translateX(100%);
+}

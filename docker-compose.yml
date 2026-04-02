@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: smart_coding_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root123456
+      MYSQL_DATABASE: smart_coding_platform
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./server/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - smart_coding_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: smart_coding_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - smart_coding_network
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: smart_coding_server
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: root123456
+      DB_NAME: smart_coding_platform
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: your_jwt_secret_key_here
+      JWT_EXPIRES_IN: 7d
+      DEEPSEEK_API_KEY: your_deepseek_api_key
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - smart_coding_network
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: smart_coding_client
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+    networks:
+      - smart_coding_network
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  smart_coding_network:
+    driver: bridge

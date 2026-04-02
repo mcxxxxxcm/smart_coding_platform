@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能编程教学平台</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <i class="ri-code-s-slash-line"></i>
+                <span>智能编程教学平台</span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="#home" class="active">首页</a></li>
+                <li><a href="#courses">课程中心</a></li>
+                <li><a href="#practice">在线练习</a></li>
+                <li><a href="#playground">代码演练</a></li>
+                <li><a href="#community">学习社区</a></li>
+            </ul>
+            <div class="nav-actions">
+                <button class="btn btn-outline">登录</button>
+                <button class="btn btn-primary">注册</button>
+            </div>
+        </div>
+    </nav>
+
+    <section id="home" class="hero">
+        <div class="hero-content">
+            <h1>开启你的编程之旅</h1>
+            <p>智能化的编程学习平台，从零基础到精通，让编程学习更简单、更高效</p>
+            <div class="hero-buttons">
+                <button class="btn btn-primary btn-lg">开始学习</button>
+                <button class="btn btn-outline btn-lg">了解更多</button>
+            </div>
+            <div class="hero-stats">
+                <div class="stat-item">
+                    <span class="stat-number">50+</span>
+                    <span class="stat-label">精品课程</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">10000+</span>
+                    <span class="stat-label">学员用户</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">5000+</span>
+                    <span class="stat-label">编程练习</span>
+                </div>
+            </div>
+        </div>
+        <div class="hero-image">
+            <div class="code-window">
+                <div class="code-header">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                    <span class="file-name">hello.js</span>
+                </div>
+                <pre class="code-content"><code><span class="keyword">function</span> <span class="function">greet</span>(<span class="param">name</span>) {
+    <span class="keyword">return</span> <span class="string">`Hello, ${name}!`</span>;
+}
+
+<span class="keyword">const</span> message = <span class="function">greet</span>(<span class="string">'世界'</span>);
+<span class="built-in">console</span>.<span class="function">log</span>(message);
+<span class="comment">// 输出: Hello, 世界!</span></code></pre>
+            </div>
+        </div>
+    </section>
+
+    <section id="courses" class="courses">
+        <div class="section-header">
+            <h2>热门课程</h2>
+            <p>精心设计的课程体系，从入门到进阶</p>
+        </div>
+        <div class="course-filters">
+            <button class="filter-btn active" data-filter="all">全部</button>
+            <button class="filter-btn" data-filter="frontend">前端开发</button>
+            <button class="filter-btn" data-filter="backend">后端开发</button>
+            <button class="filter-btn" data-filter="database">数据库</button>
+            <button class="filter-btn" data-filter="ai">人工智能</button>
+        </div>
+        <div class="course-grid">
+            <div class="course-card" data-category="frontend">
+                <div class="course-image">
+                    <i class="ri-html5-line"></i>
+                </div>
+                <div class="course-info">
+                    <span class="course-level beginner">入门</span>
+                    <h3>HTML5 + CSS3 基础入门</h3>
+                    <p>从零开始学习网页开发，掌握HTML和CSS核心技术</p>
+                    <div class="course-meta">
+                        <span><i class="ri-time-line"></i> 20课时</span>
+                        <span><i class="ri-user-line"></i> 2.3k学员</span>
+                    </div>
+                    <div class="course-progress">
+                        <div class="progress-bar" style="width: 0%"></div>
+                    </div>
+                    <button class="btn btn-primary btn-block">开始学习</button>
+                </div>
+            </div>
+            <div class="course-card" data-category="frontend">
+                <div class="course-image">
+                    <i class="ri-javascript-line"></i>
+                </div>
+                <div class="course-info">
+                    <span class="course-level beginner">入门</span>
+                    <h3>JavaScript 编程基础</h3>
+                    <p>学习JavaScript核心语法，掌握网页交互开发技能</p>
+                    <div class="course-meta">
+                        <span><i class="ri-time-line"></i> 30课时</span>
+                        <span><i class="ri-user-line"></i> 1.8k学员</span>
+                    </div>
+                    <div class="course-progress">
+                        <div class="progress-bar" style="width: 0%"></div>
+                    </div>
+                    <button class="btn btn-primary btn-block">开始学习</button>
+                </div>
+            </div>
+            <div class="course-card" data-category="frontend">
+                <div class="course-image vue">
+                    <i class="ri-vuejs-line"></i>
+                </div>
+                <div class="course-info">
+                    <span class="course-level intermediate">进阶</span>
+                    <h3>Vue.js 框架实战</h3>
+                    <p>深入学习Vue.js框架，构建现代化前端应用</p>
+                    <div class="course-meta">
+                        <span><i class="ri-time-line"></i> 40课时</span>
+                        <span><i class="ri-user-line"></i> 1.2k学员</span>
+                    </div>
+                    <div class="course-progress">
+                        <div class="progress-bar" style="width: 0%"></div>
+                    </div>
+                    <button class="btn btn-primary btn-block">开始学习</button>
+                </div>
+            </div>
+            <div class="course-card" data-category="backend">
+                <div class="course-image node">
+                    <i class="ri-nodejs-line"></i>
+                </div>
+                <div class="course-info">
+                    <span class="course-level intermediate">进阶</span>
+                    <h3>Node.js 后端开发</h3>
+                    <p>使用Node.js构建高性能服务端应用</p>
+                    <div class="course-meta">
+                        <span><i class="ri-time-line"></i> 35课时</span>
+                        <span><i class="ri-user-line"></i> 980学员</span>
+                    </div>
+                    <div class="course-progress">
+                        <div class="progress-bar" style="width: 0%"></div>
+                    </div>
+                    <button class="btn btn-primary btn-block">开始学习</button>
+                </div>
+            </div>
+            <div class="course-card" data-category="database">
+                <div class="course-image database">
+                    <i class="ri-database-2-line"></i>
+                </div>
+                <div class="course-info">
+                    <span class="course-level beginner">入门</span>
+                    <h3>MySQL 数据库入门</h3>
+                    <p>学习数据库基础知识，掌握SQL查询技能</p>
+                    <div class="course-meta">
+                        <span><i class="ri-time-line"></i> 25课时</span>
+                        <span><i class="ri-user-line"></i> 1.5k学员</span>
+                    </div>
+                    <div class="course-progress">
+                        <div class="progress-bar" style="width: 0%"></div>
+                    </div>
+                    <button class="btn btn-primary btn-block">开始学习</button>
+                </div>
+            </div>
+            <div class="course-card" data-category="ai">
+                <div class="course-image ai">
+                    <i class="ri-robot-line"></i>
+                </div>
+                <div class="course-info">
+                    <span class="course-level advanced">高级</span>
+                    <h3>Python 机器学习</h3>
+                    <p>使用Python进行机器学习和数据分析</p>
+                    <div class="course-meta">
+                        <span><i class="ri-time-line"></i> 50课时</span>
+                        <span><i class="ri-user-line"></i> 860学员</span>
+                    </div>
+                    <div class="course-progress">
+                        <div class="progress-bar" style="width: 0%"></div>
+                    </div>
+                    <button class="btn btn-primary btn-block">开始学习</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="practice" class="practice">
+        <div class="section-header">
+            <h2>在线练习</h2>
+            <p>通过实践巩固所学知识，提升编程能力</p>
+        </div>
+        <div class="practice-container">
+            <div class="practice-sidebar">
+                <div class="practice-header">
+                    <h3>题目列表</h3>
+                    <select id="difficulty-filter">
+                        <option value="all">全部难度</option>
+                        <option value="easy">简单</option>
+                        <option value="medium">中等</option>
+                        <option value="hard">困难</option>
+                    </select>
+                </div>
+                <ul class="problem-list">
+                    <li class="problem-item active" data-id="1" data-difficulty="easy">
+                        <span class="difficulty easy">简单</span>
+                        <span class="problem-title">两数之和</span>
+                    </li>
+                    <li class="problem-item" data-id="2" data-difficulty="easy">
+                        <span class="difficulty easy">简单</span>
+                        <span class="problem-title">反转字符串</span>
+                    </li>
+                    <li class="problem-item" data-id="3" data-difficulty="medium">
+                        <span class="difficulty medium">中等</span>
+                        <span class="problem-title">有效的括号</span>
+                    </li>
+                    <li class="problem-item" data-id="4" data-difficulty="medium">
+                        <span class="difficulty medium">中等</span>
+                        <span class="problem-title">最长回文子串</span>
+                    </li>
+                    <li class="problem-item" data-id="5" data-difficulty="hard">
+                        <span class="difficulty hard">困难</span>
+                        <span class="problem-title">合并K个排序链表</span>
+                    </li>
+                </ul>
+            </div>
+            <div class="practice-main">
+                <div class="problem-description">
+                    <h3>两数之和</h3>
+                    <span class="difficulty easy">简单</span>
+                    <div class="problem-content">
+                        <p>给定一个整数数组 <code>nums</code> 和一个整数目标值 <code>target</code>，请你在该数组中找出和为目标值的那两个整数，并返回它们的数组下标。</p>
+                        <p>你可以假设每种输入只会对应一个答案。但是，数组中同一个元素在答案里不能重复出现。</p>
+                        <h4>示例：</h4>
+                        <pre><code>输入：nums = [2,7,11,15], target = 9
+输出：[0,1]
+解释：因为 nums[0] + nums[1] == 9 ，返回 [0, 1] 。</code></pre>
+                    </div>
+                </div>
+                <div class="code-editor">
+                    <div class="editor-header">
+                        <select id="language-select">
+                            <option value="javascript">JavaScript</option>
+                            <option value="python">Python</option>
+                            <option value="java">Java</option>
+                            <option value="cpp">C++</option>
+                        </select>
+                        <div class="editor-actions">
+                            <button class="btn btn-sm btn-outline" id="reset-btn">
+                                <i class="ri-refresh-line"></i> 重置
+                            </button>
+                            <button class="btn btn-sm btn-primary" id="run-btn">
+                                <i class="ri-play-line"></i> 运行
+                            </button>
+                            <button class="btn btn-sm btn-success" id="submit-btn">
+                                <i class="ri-check-line"></i> 提交
+                            </button>
+                        </div>
+                    </div>
+                    <div class="editor-container">
+                        <div class="line-numbers">
+                            <span>1</span>
+                            <span>2</span>
+                            <span>3</span>
+                            <span>4</span>
+                            <span>5</span>
+                            <span>6</span>
+                            <span>7</span>
+                            <span>8</span>
+                        </div>
+                        <textarea id="code-input" spellcheck="false">/**
+ * @param {number[]} nums
+ * @param {number} target
+ * @return {number[]}
+ */
+function twoSum(nums, target) {
+    // 在这里编写你的代码
+    
+}</textarea>
+                    </div>
+                    <div class="output-panel">
+                        <div class="output-header">
+                            <span>输出结果</span>
+                            <button class="btn btn-sm btn-outline" id="clear-output">
+                                <i class="ri-delete-bin-line"></i>
+                            </button>
+                        </div>
+                        <div id="output-content" class="output-content">
+                            <span class="placeholder">点击"运行"查看结果...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="playground" class="playground">
+        <div class="section-header">
+            <h2>代码演练场</h2>
+            <p>自由编写代码，实时预览效果</p>
+        </div>
+        <div class="playground-container">
+            <div class="editor-panel">
+                <div class="panel-tabs">
+                    <button class="tab-btn active" data-lang="html">HTML</button>
+                    <button class="tab-btn" data-lang="css">CSS</button>
+                    <button class="tab-btn" data-lang="js">JavaScript</button>
+                </div>
+                <div class="editor-wrapper">
+                    <textarea id="html-editor" class="code-editor-textarea active" spellcheck="false"><!DOCTYPE html>
+<html>
+<head>
+    <title>我的页面</title>
+</head>
+<body>
+    <h1>Hello World!</h1>
+    <p>这是一个示例页面</p>
+    <button id="btn">点击我</button>
+</body>
+</html></textarea>
+                    <textarea id="css-editor" class="code-editor-textarea" spellcheck="false">body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    padding: 50px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    margin: 0;
+}
+
+h1 {
+    color: white;
+    font-size: 3em;
+    margin-bottom: 20px;
+}
+
+p {
+    color: rgba(255,255,255,0.8);
+    font-size: 1.2em;
+}
+
+button {
+    padding: 12px 30px;
+    font-size: 16px;
+    border: none;
+    border-radius: 25px;
+    background: white;
+    color: #667eea;
+    cursor: pointer;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+}</textarea>
+                    <textarea id="js-editor" class="code-editor-textarea" spellcheck="false">document.getElementById('btn').addEventListener('click', function() {
+    alert('你点击了按钮！');
+});</textarea>
+                </div>
+            </div>
+            <div class="preview-panel">
+                <div class="preview-header">
+                    <span>预览</span>
+                    <button class="btn btn-sm btn-primary" id="run-preview">
+                        <i class="ri-play-line"></i> 运行
+                    </button>
+                </div>
+                <iframe id="preview-frame" sandbox="allow-scripts"></iframe>
+            </div>
+        </div>
+    </section>
+
+    <section id="community" class="community">
+        <div class="section-header">
+            <h2>学习社区</h2>
+            <p>与志同道合的伙伴一起学习成长</p>
+        </div>
+        <div class="community-grid">
+            <div class="community-card">
+                <div class="card-icon">
+                    <i class="ri-question-answer-line"></i>
+                </div>
+                <h3>问答讨论</h3>
+                <p>遇到问题？在这里提问，获得社区帮助</p>
+                <a href="#" class="card-link">参与讨论 <i class="ri-arrow-right-line"></i></a>
+            </div>
+            <div class="community-card">
+                <div class="card-icon">
+                    <i class="ri-article-line"></i>
+                </div>
+                <h3>技术文章</h3>
+                <p>分享学习心得，阅读优质技术文章</p>
+                <a href="#" class="card-link">浏览文章 <i class="ri-arrow-right-line"></i></a>
+            </div>
+            <div class="community-card">
+                <div class="card-icon">
+                    <i class="ri-team-line"></i>
+                </div>
+                <h3>学习小组</h3>
+                <p>加入学习小组，一起打卡进步</p>
+                <a href="#" class="card-link">加入小组 <i class="ri-arrow-right-line"></i></a>
+            </div>
+            <div class="community-card">
+                <div class="card-icon">
+                    <i class="ri-trophy-line"></i>
+                </div>
+                <h3>编程竞赛</h3>
+                <p>参与编程竞赛，挑战自我赢取奖励</p>
+                <a href="#" class="card-link">查看竞赛 <i class="ri-arrow-right-line"></i></a>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>关于我们</h4>
+                <p>智能编程教学平台致力于为学习者提供优质的编程教育资源，帮助每一位学习者实现编程梦想。</p>
+            </div>
+            <div class="footer-section">
+                <h4>快速链接</h4>
+                <ul>
+                    <li><a href="#courses">课程中心</a></li>
+                    <li><a href="#practice">在线练习</a></li>
+                    <li><a href="#playground">代码演练</a></li>
+                    <li><a href="#community">学习社区</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>联系方式</h4>
+                <ul>
+                    <li><i class="ri-mail-line"></i> contact@smartcoding.com</li>
+                    <li><i class="ri-phone-line"></i> 400-123-4567</li>
+                    <li><i class="ri-map-pin-line"></i> 北京市海淀区</li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>关注我们</h4>
+                <div class="social-links">
+                    <a href="#"><i class="ri-wechat-fill"></i></a>
+                    <a href="#"><i class="ri-weibo-fill"></i></a>
+                    <a href="#"><i class="ri-github-fill"></i></a>
+                    <a href="#"><i class="ri-bilibili-fill"></i></a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2024 智能编程教学平台. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
