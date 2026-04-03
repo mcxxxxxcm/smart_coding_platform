@@ -234,57 +234,90 @@ export class CodeExecutor {
         }
       };
 
-      const timeout = setTimeout(() => {
-        if (!isResolved) {
-          isResolved = true;
-          try {
-            process.kill();
-          } catch {}
+      // Windows 上尝试多个 Python 命令
+      const pythonCommands = process.platform === 'win32' 
+        ? ['py', 'python3', 'python'] 
+        : ['python3', 'python'];
+
+      let childProcess: any = null;
+      let currentCmdIndex = 0;
+
+      const trySpawn = () => {
+        if (currentCmdIndex >= pythonCommands.length) {
+          reject(new Error(`找不到 Python 解释器，已尝试: ${pythonCommands.join(', ')}`));
+          return;
+        }
+
+        const cmd = pythonCommands[currentCmdIndex];
+        console.log(`尝试使用命令: ${cmd}`);
+        
+        try {
+          childProcess = spawn(cmd, [tempFile], {
+            timeout: timeLimit,
+          });
+          
+          // 成功创建进程
+          setupProcessHandlers();
+        } catch (err) {
+          console.log(`${cmd} 不可用，尝试下一个...`);
+          currentCmdIndex++;
+          trySpawn();
+        }
+      };
+
+      const setupProcessHandlers = () => {
+        const timeout = setTimeout(() => {
+          if (!isResolved) {
+            isResolved = true;
+            try { childProcess.kill(); } catch {}
+            cleanupFile();
+            reject(new Error('Time Limit Exceeded'));
+          }
+        }, timeLimit);
+
+        childProcess.stdin.write(input);
+        childProcess.stdin.end();
+
+        childProcess.stdout.on('data', (data: Buffer) => {
+          stdout += data.toString();
+        });
+
+        childProcess.stderr.on('data', (data: Buffer) => {
+          stderr += data.toString();
+        });
+
+        childProcess.on('close', (code: number | null) => {
+          clearTimeout(timeout);
           cleanupFile();
-          reject(new Error('Time Limit Exceeded'));
-        }
-      }, timeLimit);
-
-      const process = spawn('python', [tempFile], {
-        timeout: timeLimit,
-      });
-
-      process.stdin.write(input);
-      process.stdin.end();
-
-      process.stdout.on('data', (data) => {
-        stdout += data.toString();
-      });
-
-      process.stderr.on('data', (data) => {
-        stderr += data.toString();
-      });
-
-      process.on('close', (code) => {
-        clearTimeout(timeout);
-        cleanupFile();
-        
-        if (isResolved) return;
-        isResolved = true;
-        
-        const runtime = Date.now() - startTime;
-        
-        if (code !== 0) {
-          reject(new Error(stderr || 'Runtime Error'));
-        } else {
-          resolve({ output: stdout, runtime });
-        }
-      });
-
-      process.on('error', (err) => {
-        clearTimeout(timeout);
-        cleanupFile();
-        
-        if (!isResolved) {
+          
+          if (isResolved) return;
           isResolved = true;
-          reject(err);
-        }
-      });
+          
+          const runtime = Date.now() - startTime;
+          
+          if (code !== 0) {
+            reject(new Error(stderr || 'Runtime Error'));
+          } else {
+            resolve({ output: stdout, runtime });
+          }
+        });
+
+        childProcess.on('error', (err: Error & { code?: string }) => {
+          clearTimeout(timeout);
+          cleanupFile();
+          
+          if (!isResolved && err.code === 'ENOENT') {
+            // 命令不存在，尝试下一个
+            currentCmdIndex++;
+            trySpawn();
+          } else if (!isResolved) {
+            isResolved = true;
+            reject(err);
+          }
+        });
+      };
+
+      trySpawn();
     });
   }
 
