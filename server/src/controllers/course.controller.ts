@@ -6,13 +6,16 @@ import { AppError } from '../middleware/error.middleware';
 export class CourseController {
   async getCourses(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
+      console.log('获取课程列表...');
       const { page = '1', limit = '10', category, difficulty, search } = req.query as PaginatedQuery & {
         category?: string;
         difficulty?: string;
         search?: string;
       };
       
-      const offset = (parseInt(page) - 1) * parseInt(limit);
+      const pageNum = parseInt(page as string) || 1;
+      const limitNum = parseInt(limit as string) || 10;
+      const offset = (pageNum - 1) * limitNum;
       
       let whereClause = "WHERE status = 'published'";
       const params: (string | number)[] = [];
@@ -32,40 +35,44 @@ export class CourseController {
         params.push(`%${search}%`, `%${search}%`);
       }
       
-      const [rows] = await pool.execute(
-        `SELECT 
-          c.id, c.title, c.description, c.cover_image, c.category, c.difficulty,
-          c.duration, c.price, c.enrollment_count, c.rating, c.created_at,
-          u.username as teacher_name, u.avatar as teacher_avatar
-         FROM courses c
-         LEFT JOIN users u ON c.teacher_id = u.id
-         ${whereClause}
-         ORDER BY c.created_at DESC
-         LIMIT ? OFFSET ?`,
-        [...params, parseInt(limit), offset]
-      );
+      const sql = `SELECT 
+        c.id, c.title, c.description, c.cover_image, c.category, c.difficulty,
+        c.duration, c.price, c.enrollment_count, c.rating, c.created_at,
+        u.username as teacher_name, u.avatar as teacher_avatar
+       FROM courses c
+       LEFT JOIN users u ON c.teacher_id = u.id
+       ${whereClause}
+       ORDER BY c.created_at DESC
+       LIMIT ${limitNum} OFFSET ${offset}`;
       
-      const [countRows] = await pool.execute(
-        `SELECT COUNT(*) as total FROM courses ${whereClause}`,
-        params
-      );
+      console.log('SQL:', sql);
+      console.log('Params:', params);
+      
+      const [rows] = await pool.execute(sql, params);
+      
+      const countSql = `SELECT COUNT(*) as total FROM courses ${whereClause}`;
+      const [countRows] = await pool.execute(countSql, params);
       
       const countData = countRows as { total: number }[];
+      console.log('课程数量:', countData[0].total);
       
       res.json({
         success: true,
+        message: '获取成功',
         data: rows,
         pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
+          page: pageNum,
+          limit: limitNum,
           total: countData[0].total,
-          totalPages: Math.ceil(countData[0].total / parseInt(limit))
+          totalPages: Math.ceil(countData[0].total / limitNum)
         }
       } as ApiResponse);
-    } catch {
+    } catch (error) {
+      console.error('获取课程列表错误:', error);
       res.status(500).json({
         success: false,
-        message: '获取课程列表失败'
+        message: '获取课程列表失败',
+        error: error instanceof Error ? error.message : '未知错误'
       } as ApiResponse);
     }
   }

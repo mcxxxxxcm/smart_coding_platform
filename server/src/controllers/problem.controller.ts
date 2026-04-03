@@ -13,17 +13,12 @@ export class ProblemController {
         search?: string;
       };
       
-      const offset = (parseInt(page) - 1) * parseInt(limit);
-      const cacheKey = `problems:${page}:${limit}:${difficulty}:${category}:${search}`;
-      
-      const cached = await getCache(cacheKey);
-      if (cached) {
-        res.json(cached as ApiResponse);
-        return;
-      }
+      const pageNum = parseInt(page);
+      const limitNum = parseInt(limit);
+      const offset = (pageNum - 1) * limitNum;
       
       let whereClause = "WHERE status = 'published'";
-      const params: unknown[] = [];
+      const params: (string | number)[] = [];
       
       if (difficulty) {
         whereClause += ' AND difficulty = ?';
@@ -40,17 +35,22 @@ export class ProblemController {
         params.push(`%${search}%`, `%${search}%`);
       }
       
+      console.log('SQL:', `SELECT id, title, description, difficulty, category, tags FROM problems ${whereClause} LIMIT ${limitNum} OFFSET ${offset}`);
+      console.log('Params:', params);
+      
       const [rows] = await pool.execute(
         `SELECT 
-          id, title, difficulty, category, tags,
+          id, title, description, difficulty, category, tags,
           submission_count, accepted_count,
           ROUND(accepted_count / NULLIF(submission_count, 0) * 100, 1) as acceptance_rate
          FROM problems
          ${whereClause}
          ORDER BY id ASC
-         LIMIT ? OFFSET ?`,
-        [...params, parseInt(limit), offset]
+         LIMIT ${limitNum} OFFSET ${offset}`,
+        params
       );
+      
+      console.log('题目列表:', rows);
       
       const [countRows] = await pool.execute(
         `SELECT COUNT(*) as total FROM problems ${whereClause}`,
@@ -61,19 +61,27 @@ export class ProblemController {
       
       const response: ApiResponse = {
         success: true,
+        message: '获取成功',
         data: rows,
         pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
+          page: pageNum,
+          limit: limitNum,
           total: countData[0].total,
-          totalPages: Math.ceil(countData[0].total / parseInt(limit))
+          totalPages: Math.ceil(countData[0].total / limitNum)
         }
       };
       
-      await setCache(cacheKey, response, 300);
+      // 尝试设置缓存，如果 Redis 不可用则忽略
+      try {
+        const cacheKey = `problems:${page}:${limit}:${difficulty}:${category}:${search}`;
+        await setCache(cacheKey, response, 300);
+      } catch (cacheError) {
+        console.log('缓存设置失败，继续使用:', cacheError);
+      }
       
       res.json(response);
-    } catch {
+    } catch (error) {
+      console.error('获取题目列表错误:', error);
       res.status(500).json({
         success: false,
         message: '获取题目列表失败'
@@ -123,6 +131,7 @@ export class ProblemController {
       
       const response: ApiResponse = {
         success: true,
+        message: '获取成功',
         data: problem
       };
       
@@ -194,7 +203,7 @@ export class ProblemController {
       } = req.body;
       
       const updates: string[] = [];
-      const values: unknown[] = [];
+      const values: (string | number)[] = [];
       
       if (title) { updates.push('title = ?'); values.push(title); }
       if (description) { updates.push('description = ?'); values.push(description); }

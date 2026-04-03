@@ -9,26 +9,43 @@ export class SubmissionController {
 
   constructor() {
     this.codeExecutor = new CodeExecutor();
+    // 绑定 this 上下文
+    this.submit = this.submit.bind(this);
+    this.getSubmission = this.getSubmission.bind(this);
+    this.getUserSubmissions = this.getUserSubmissions.bind(this);
   }
 
   async submit(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
+      console.log('收到代码提交:', req.body);
       const { problem_id, language, code } = req.body;
       const userId = req.user!.id;
+      
+      console.log('用户 ID:', userId);
+      console.log('题目 ID:', problem_id);
+      console.log('语言:', language);
       
       const [problems] = await pool.execute(
         'SELECT id, test_cases, time_limit, memory_limit FROM problems WHERE id = ? AND status = "published"',
         [problem_id]
       );
       
-      const problemList = problems as { id: number; test_cases: string; time_limit: number; memory_limit: number }[];
+      const problemList = problems as { id: number; test_cases: string | any[]; time_limit: number; memory_limit: number }[];
+      
+      console.log('查询到的题目:', problemList);
       
       if (problemList.length === 0) {
         throw new AppError('题目不存在', 404);
       }
       
       const problem = problemList[0];
-      const testCases = JSON.parse(problem.test_cases);
+      
+      // test_cases 可能已经是对象（MySQL JSON 类型自动解析），也可能是 JSON 字符串
+      const testCases = typeof problem.test_cases === 'string' 
+        ? JSON.parse(problem.test_cases) 
+        : problem.test_cases;
+      
+      console.log('测试用例:', testCases);
       
       const [result] = await pool.execute(
         `INSERT INTO submissions 
@@ -40,6 +57,8 @@ export class SubmissionController {
       const insertResult = result as { insertId: number };
       const submissionId = insertResult.insertId;
       
+      console.log('提交成功，提交 ID:', submissionId);
+      
       res.json({
         success: true,
         message: '代码已提交，正在执行中',
@@ -48,6 +67,7 @@ export class SubmissionController {
       
       this.executeCode(submissionId, userId, problem_id, language, code, testCases, problem.time_limit, problem.memory_limit);
     } catch (error) {
+      console.error('提交代码错误:', error);
       if (error instanceof AppError) {
         res.status(error.statusCode).json({
           success: false,
@@ -169,8 +189,8 @@ export class SubmissionController {
     try {
       const userId = req.user!.id;
       const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 20;
-      const offset = (page - 1) * limit;
+      const limitNum = parseInt(req.query.limit as string) || 20;
+      const offset = (page - 1) * limitNum;
       
       const [rows] = await pool.execute(
         `SELECT 
@@ -180,8 +200,8 @@ export class SubmissionController {
          JOIN problems p ON s.problem_id = p.id
          WHERE s.user_id = ?
          ORDER BY s.submitted_at DESC
-         LIMIT ? OFFSET ?`,
-        [userId, limit, offset]
+         LIMIT ${limitNum} OFFSET ${offset}`,
+        [userId]
       );
       
       const [countRows] = await pool.execute(
@@ -196,12 +216,13 @@ export class SubmissionController {
         data: rows,
         pagination: {
           page,
-          limit,
+          limit: limitNum,
           total: countData[0].total,
-          totalPages: Math.ceil(countData[0].total / limit)
+          totalPages: Math.ceil(countData[0].total / limitNum)
         }
       } as ApiResponse);
-    } catch {
+    } catch (error) {
+      console.error('获取提交记录错误:', error);
       res.status(500).json({
         success: false,
         message: '获取提交记录失败'

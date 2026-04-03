@@ -110,6 +110,7 @@ const formatNumber = (num: number) => {
 }
 
 const fetchCourses = async () => {
+  console.log('开始获取课程列表...')
   loading.value = true
   try {
     const res = await courseApi.getCourses({
@@ -117,16 +118,22 @@ const fetchCourses = async () => {
       limit: pagination.limit,
       ...filters
     })
+    console.log('API 响应:', res)
     courses.value = res.data || []
     if (res.pagination) {
       pagination.total = res.pagination.total
     }
+  } catch (error) {
+    console.error('获取课程失败:', error)
   } finally {
     loading.value = false
   }
 }
 
-onMounted(fetchCourses)
+onMounted(() => {
+  console.log('Courses 组件已挂载')
+  fetchCourses()
+})
 </script>
 
 <style scoped lang="scss">

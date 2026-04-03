@@ -14,7 +14,7 @@ export class CommunityController {
       const offset = (parseInt(page) - 1) * parseInt(limit);
       
       let whereClause = "WHERE status = 'published'";
-      const params: unknown[] = [];
+      const params: (string | number)[] = [];
       
       if (category) {
         whereClause += ' AND category = ?';
@@ -167,7 +167,7 @@ export class CommunityController {
       const { title, content, category, tags, status } = req.body;
       
       const updates: string[] = [];
-      const values: unknown[] = [];
+      const values: (string | number)[] = [];
       
       if (title) { updates.push('title = ?'); values.push(title); }
       if (content) { updates.push('content = ?'); values.push(content); }

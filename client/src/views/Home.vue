@@ -150,10 +150,15 @@ const scrollToCourses = () => {
 
 onMounted(async () => {
   try {
+    console.log('开始获取课程数据...')
     const res = await courseApi.getCourses({ limit: 6 })
+    console.log('API 响应:', res)
+    console.log('res.data:', res.data)
+    console.log('res.data 类型:', typeof res.data, Array.isArray(res.data))
     courses.value = res.data || []
-  } catch {
-    console.error('获取课程失败')
+    console.log('courses.value:', courses.value)
+  } catch (error) {
+    console.error('获取课程失败:', error)
   }
 })
 </script>

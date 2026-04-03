@@ -48,7 +48,7 @@
     </header>
     
     <main class="main-content">
-      <slot />
+      <router-view />
     </main>
     
     <footer class="footer">

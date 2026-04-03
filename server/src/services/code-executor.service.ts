@@ -144,16 +144,34 @@ export class CodeExecutor {
       const tempFile = path.join(this.tempDir, `code_${Date.now()}.js`);
       fs.writeFileSync(tempFile, wrappedCode);
 
+      let stdout = '';
+      let stderr = '';
+      let isResolved = false;
+
+      const cleanupFile = () => {
+        try {
+          if (fs.existsSync(tempFile)) {
+            fs.unlinkSync(tempFile);
+          }
+        } catch (err) {
+          console.error('清理临时文件失败:', err);
+        }
+      };
+
       const timeout = setTimeout(() => {
-        reject(new Error('Time Limit Exceeded'));
+        if (!isResolved) {
+          isResolved = true;
+          try {
+            process.kill();
+          } catch {}
+          cleanupFile();
+          reject(new Error('Time Limit Exceeded'));
+        }
       }, timeLimit);
 
       const process = spawn('node', [tempFile], {
         timeout: timeLimit,
       });
-
-      let stdout = '';
-      let stderr = '';
 
       process.stdout.on('data', (data) => {
         stdout += data.toString();
@@ -165,7 +183,10 @@ export class CodeExecutor {
 
       process.on('close', (code) => {
         clearTimeout(timeout);
-        fs.unlinkSync(tempFile);
+        cleanupFile();
+        
+        if (isResolved) return;
+        isResolved = true;
         
         const runtime = Date.now() - startTime;
         
@@ -178,8 +199,12 @@ export class CodeExecutor {
 
       process.on('error', (err) => {
         clearTimeout(timeout);
-        fs.unlinkSync(tempFile);
-        reject(err);
+        cleanupFile();
+        
+        if (!isResolved) {
+          isResolved = true;
+          reject(err);
+        }
       });
     });
   }
@@ -195,16 +220,34 @@ export class CodeExecutor {
       const tempFile = path.join(this.tempDir, `code_${Date.now()}.py`);
       fs.writeFileSync(tempFile, code);
 
+      let stdout = '';
+      let stderr = '';
+      let isResolved = false;
+
+      const cleanupFile = () => {
+        try {
+          if (fs.existsSync(tempFile)) {
+            fs.unlinkSync(tempFile);
+          }
+        } catch (err) {
+          console.error('清理临时文件失败:', err);
+        }
+      };
+
       const timeout = setTimeout(() => {
-        reject(new Error('Time Limit Exceeded'));
+        if (!isResolved) {
+          isResolved = true;
+          try {
+            process.kill();
+          } catch {}
+          cleanupFile();
+          reject(new Error('Time Limit Exceeded'));
+        }
       }, timeLimit);
 
       const process = spawn('python', [tempFile], {
         timeout: timeLimit,
       });
-
-      let stdout = '';
-      let stderr = '';
 
       process.stdin.write(input);
       process.stdin.end();
@@ -219,7 +262,10 @@ export class CodeExecutor {
 
       process.on('close', (code) => {
         clearTimeout(timeout);
-        fs.unlinkSync(tempFile);
+        cleanupFile();
+        
+        if (isResolved) return;
+        isResolved = true;
         
         const runtime = Date.now() - startTime;
         
@@ -232,8 +278,12 @@ export class CodeExecutor {
 
       process.on('error', (err) => {
         clearTimeout(timeout);
-        fs.unlinkSync(tempFile);
-        reject(err);
+        cleanupFile();
+        
+        if (!isResolved) {
+          isResolved = true;
+          reject(err);
+        }
       });
     });
   }

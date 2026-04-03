@@ -8,20 +8,29 @@ import { AppError } from '../middleware/error.middleware';
 
 export class AuthController {
   async register(req: Request, res: Response): Promise<void> {
+    console.log('注册请求收到:', req.body);
     try {
       const { username, email, password } = req.body;
       
+      console.log('检查用户是否存在...');
       const [existingUsers] = await pool.execute(
         'SELECT id FROM users WHERE email = ? OR username = ?',
         [email, username]
       );
       
       if ((existingUsers as unknown[]).length > 0) {
-        throw new AppError('用户名或邮箱已被注册', 400);
+        console.log('用户已存在');
+        res.status(400).json({
+          success: false,
+          message: '用户名或邮箱已被注册'
+        } as ApiResponse);
+        return;
       }
       
-      const hashedPassword = await bcrypt.hash(password, 12);
+      console.log('加密密码...');
+      const hashedPassword = await bcrypt.hash(password, 10);
       
+      console.log('插入用户...');
       const [result] = await pool.execute(
         `INSERT INTO users (username, email, password, role, level, experience, points, created_at, updated_at)
          VALUES (?, ?, ?, 'student', 1, 0, 0, NOW(), NOW())`,
@@ -30,10 +39,12 @@ export class AuthController {
       
       const insertResult = result as { insertId: number };
       const userId = insertResult.insertId;
+      console.log('用户ID:', userId);
       
       const signOptions: SignOptions = { expiresIn: '7d' };
       const token = jwt.sign({ id: userId }, config.jwt.secret, signOptions);
       
+      console.log('注册成功');
       res.status(201).json({
         success: true,
         message: '注册成功',
@@ -48,21 +59,21 @@ export class AuthController {
         }
       } as ApiResponse);
     } catch (error) {
-      if (error instanceof AppError) {
-        res.status(error.statusCode).json({
-          success: false,
-          message: error.message
-        } as ApiResponse);
-        return;
-      }
-      throw error;
+      console.error('注册错误:', error);
+      res.status(500).json({
+        success: false,
+        message: '注册失败',
+        error: error instanceof Error ? error.message : '未知错误'
+      } as ApiResponse);
     }
   }
 
   async login(req: Request, res: Response): Promise<void> {
+    console.log('登录请求收到:', req.body);
     try {
       const { email, password } = req.body;
       
+      console.log('查询用户...');
       const [rows] = await pool.execute(
         'SELECT id, username, email, password, role, avatar, level, experience, points FROM users WHERE email = ?',
         [email]
@@ -81,25 +92,32 @@ export class AuthController {
       }[];
       
       if (users.length === 0) {
-        throw new AppError('邮箱或密码错误', 401);
+        console.log('用户不存在');
+        res.status(401).json({
+          success: false,
+          message: '邮箱或密码错误'
+        } as ApiResponse);
+        return;
       }
       
       const user = users[0];
+      console.log('验证密码...');
       
       const isPasswordValid = await bcrypt.compare(password, user.password);
       
       if (!isPasswordValid) {
-        throw new AppError('邮箱或密码错误', 401);
+        console.log('密码错误');
+        res.status(401).json({
+          success: false,
+          message: '邮箱或密码错误'
+        } as ApiResponse);
+        return;
       }
       
       const signOptions: SignOptions = { expiresIn: '7d' };
       const token = jwt.sign({ id: user.id }, config.jwt.secret, signOptions);
       
-      await pool.execute(
-        'UPDATE users SET updated_at = NOW() WHERE id = ?',
-        [user.id]
-      );
-      
+      console.log('登录成功');
       res.json({
         success: true,
         message: '登录成功',
@@ -118,14 +136,12 @@ export class AuthController {
         }
       } as ApiResponse);
     } catch (error) {
-      if (error instanceof AppError) {
-        res.status(error.statusCode).json({
-          success: false,
-          message: error.message
-        } as ApiResponse);
-        return;
-      }
-      throw error;
+      console.error('登录错误:', error);
+      res.status(500).json({
+        success: false,
+        message: '登录失败',
+        error: error instanceof Error ? error.message : '未知错误'
+      } as ApiResponse);
     }
   }
 
