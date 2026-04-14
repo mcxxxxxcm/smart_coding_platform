@@ -295,4 +295,156 @@ export class UserController {
       throw error;
     }
   }
+
+  async getUsers(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const offset = (page - 1) * limit;
+      const role = req.query.role as string;
+      const search = req.query.search as string;
+      const level = req.query.level as string;
+      
+      console.log('获取用户列表 - role:', role, 'search:', search, 'level:', level);
+      
+      let whereClause = 'WHERE 1=1';
+      const params: (string | number)[] = [];
+      
+      if (role) {
+        whereClause += ' AND role = ?';
+        params.push(role);
+      }
+      
+      if (search) {
+        whereClause += ' AND (username LIKE ? OR email LIKE ?)';
+        params.push(`%${search}%`, `%${search}%`);
+      }
+      
+      if (level) {
+        whereClause += ' AND level = ?';
+        params.push(parseInt(level));
+      }
+      
+      const [rows] = await pool.execute(
+        `SELECT id, username, email, avatar, role, level, experience, points, bio, created_at
+         FROM users
+         ${whereClause}
+         ORDER BY created_at DESC
+         LIMIT ? OFFSET ?`,
+        [...params, limit, offset]
+      );
+      
+      const [countRows] = await pool.execute(
+        `SELECT COUNT(*) as total FROM users ${whereClause}`,
+        params
+      );
+      
+      const countData = countRows as { total: number }[];
+      
+      console.log('用户列表结果:', (rows as any[]).length, '条');
+      
+      res.json({
+        success: true,
+        data: rows,
+        pagination: {
+          page,
+          limit,
+          total: countData[0].total,
+          totalPages: Math.ceil(countData[0].total / limit)
+        }
+      } as ApiResponse);
+    } catch (error) {
+      console.error('获取用户列表错误:', error);
+      res.status(500).json({
+        success: false,
+        message: '获取用户列表失败'
+      } as ApiResponse);
+    }
+  }
+
+  async getTeacherStats(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const teacherId = req.user!.id;
+      
+      console.log('获取教师统计数据 - teacherId:', teacherId);
+      
+      let studentCount = 0;
+      let totalSubmissions = 0;
+      let acceptedSubmissions = 0;
+      let activeCourses = 0;
+      
+      try {
+        const [studentResult] = await pool.execute(
+          `SELECT COUNT(DISTINCT ue.user_id) as count
+           FROM user_enrollments ue
+           JOIN courses c ON ue.course_id = c.id
+           WHERE c.teacher_id = ?`,
+          [teacherId]
+        );
+        const studentData = studentResult as { count: number }[];
+        studentCount = studentData[0]?.count || 0;
+      } catch (e) {
+        console.log('获取学生数失败:', e);
+      }
+      
+      try {
+        const [submissionResult] = await pool.execute(
+          `SELECT COUNT(*) as count
+           FROM submissions s
+           JOIN problems p ON s.problem_id = p.id
+           WHERE p.created_by = ?`,
+          [teacherId]
+        );
+        const submissionData = submissionResult as { count: number }[];
+        totalSubmissions = submissionData[0]?.count || 0;
+      } catch (e) {
+        console.log('获取提交数失败:', e);
+      }
+      
+      try {
+        const [acceptedResult] = await pool.execute(
+          `SELECT COUNT(*) as count
+           FROM submissions s
+           JOIN problems p ON s.problem_id = p.id
+           WHERE p.created_by = ? AND s.status = 'accepted'`,
+          [teacherId]
+        );
+        const acceptedData = acceptedResult as { count: number }[];
+        acceptedSubmissions = acceptedData[0]?.count || 0;
+      } catch (e) {
+        console.log('获取通过数失败:', e);
+      }
+      
+      try {
+        const [courseResult] = await pool.execute(
+          `SELECT COUNT(*) as count FROM courses WHERE teacher_id = ? AND status = 'published'`,
+          [teacherId]
+        );
+        const courseData = courseResult as { count: number }[];
+        activeCourses = courseData[0]?.count || 0;
+      } catch (e) {
+        console.log('获取课程数失败:', e);
+      }
+      
+      const passRate = totalSubmissions > 0 ? Math.round((acceptedSubmissions / totalSubmissions) * 100) : 0;
+      
+      console.log('统计数据:', { studentCount, totalSubmissions, acceptedSubmissions, passRate, activeCourses });
+      
+      res.json({
+        success: true,
+        data: {
+          totalStudents: studentCount,
+          totalSubmissions: totalSubmissions,
+          passRate: passRate,
+          activeCourses: activeCourses
+        }
+      } as ApiResponse);
+    } catch (error) {
+      console.error('获取统计数据错误:', error);
+      res.status(500).json({
+        success: false,
+        message: '获取统计数据失败'
+      } as ApiResponse);
+    }
+  }
 }

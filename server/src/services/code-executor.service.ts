@@ -61,22 +61,24 @@ export class CodeExecutor {
       let runtime: number;
 
       switch (language.toLowerCase()) {
-        case 'javascript':
-          const jsResult = await this.executeJavaScript(code, testCase.input, timeLimit);
-          output = jsResult.output;
-          runtime = jsResult.runtime;
-          break;
         case 'python':
           const pyResult = await this.executePython(code, testCase.input, timeLimit);
           output = pyResult.output;
           runtime = pyResult.runtime;
+          break;
+        case 'cpp':
+        case 'c':
+        case 'c++':
+          const cppResult = await this.executeCpp(code, testCase.input, timeLimit);
+          output = cppResult.output;
+          runtime = cppResult.runtime;
           break;
         default:
           return {
             status: 'compilation_error',
             runtime: 0,
             memory: 0,
-            output: '',
+            output: `不支持的语言: ${language}`,
             expected: testCase.output,
           };
       }
@@ -115,97 +117,133 @@ export class CodeExecutor {
     }
   }
 
-  private async executeJavaScript(
+  private async executeCpp(
     code: string,
     input: string,
     timeLimit: number
   ): Promise<{ output: string; runtime: number }> {
     return new Promise((resolve, reject) => {
       const startTime = Date.now();
-      
-      const wrappedCode = `
-        const input = ${JSON.stringify(input)};
-        let output = '';
-        
-        const originalLog = console.log;
-        console.log = (...args) => {
-          output += args.join(' ') + '\\n';
-        };
-        
-        try {
-          ${code}
-        } catch (e) {
-          console.error(e.message);
-        }
-        
-        process.stdout.write(output);
-      `;
+      const timestamp = Date.now();
 
-      const tempFile = path.join(this.tempDir, `code_${Date.now()}.js`);
-      fs.writeFileSync(tempFile, wrappedCode);
+      const srcFile = path.join(this.tempDir, `code_${timestamp}.cpp`);
+      const exeFile = path.join(this.tempDir, `code_${timestamp}.exe`);
+      fs.writeFileSync(srcFile, code);
 
       let stdout = '';
       let stderr = '';
       let isResolved = false;
 
-      const cleanupFile = () => {
+      const cleanupFiles = () => {
         try {
-          if (fs.existsSync(tempFile)) {
-            fs.unlinkSync(tempFile);
-          }
-        } catch (err) {
-          console.error('清理临时文件失败:', err);
-        }
+          if (fs.existsSync(srcFile)) fs.unlinkSync(srcFile);
+          if (fs.existsSync(exeFile)) fs.unlinkSync(exeFile);
+        } catch {}
       };
 
-      const timeout = setTimeout(() => {
-        if (!isResolved) {
+      // Windows 上尝试多个编译器
+      const compilers = process.platform === 'win32'
+        ? ['g++', 'clang++', 'gcc']
+        : ['g++', 'clang++'];
+
+      let compilerIndex = 0;
+
+      const tryCompile = () => {
+        if (compilerIndex >= compilers.length) {
+          cleanupFiles();
+          reject(new Error(`找不到 C/C++ 编译器，已尝试: ${compilers.join(', ')}`));
+          return;
+        }
+
+        const compiler = compilers[compilerIndex];
+        console.log(`尝试使用编译器: ${compiler}`);
+
+        const compileProcess = spawn(compiler, [srcFile, '-o', exeFile, '-O2', '-Wall'], {
+          timeout: 10000,
+        });
+
+        let compileStderr = '';
+
+        compileProcess.stderr.on('data', (data: Buffer) => {
+          compileStderr += data.toString();
+        });
+
+        compileProcess.on('close', (compileCode: number | null) => {
+          if (compileCode !== 0) {
+            console.log(`${compiler} 编译失败，尝试下一个...`);
+            compileStderr = '';
+            compilerIndex++;
+            tryCompile();
+            return;
+          }
+
+          // 编译成功，运行程序
+          console.log(`编译成功，开始执行...`);
+          runExecutable();
+        });
+
+        compileProcess.on('error', (err: Error & { code?: string }) => {
+          if (err.code === 'ENOENT') {
+            compilerIndex++;
+            tryCompile();
+          } else {
+            cleanupFiles();
+            reject(err);
+          }
+        });
+      };
+
+      const runExecutable = () => {
+        const timeout = setTimeout(() => {
+          if (!isResolved) {
+            isResolved = true;
+            cleanupFiles();
+            reject(new Error('Time Limit Exceeded'));
+          }
+        }, timeLimit);
+
+        const execProcess = spawn(exeFile, [], {
+          timeout: timeLimit,
+        });
+
+        execProcess.stdin.write(input);
+        execProcess.stdin.end();
+
+        execProcess.stdout.on('data', (data: Buffer) => {
+          stdout += data.toString();
+        });
+
+        execProcess.stderr.on('data', (data: Buffer) => {
+          stderr += data.toString();
+        });
+
+        execProcess.on('close', (code: number | null) => {
+          clearTimeout(timeout);
+          cleanupFiles();
+
+          if (isResolved) return;
           isResolved = true;
-          try {
-            process.kill();
-          } catch {}
-          cleanupFile();
-          reject(new Error('Time Limit Exceeded'));
-        }
-      }, timeLimit);
 
-      const process = spawn('node', [tempFile], {
-        timeout: timeLimit,
-      });
+          const runtime = Date.now() - startTime;
 
-      process.stdout.on('data', (data) => {
-        stdout += data.toString();
-      });
+          if (code !== 0) {
+            reject(new Error(stderr || 'Runtime Error'));
+          } else {
+            resolve({ output: stdout, runtime });
+          }
+        });
 
-      process.stderr.on('data', (data) => {
-        stderr += data.toString();
-      });
+        execProcess.on('error', (err: Error) => {
+          clearTimeout(timeout);
+          cleanupFiles();
+          if (!isResolved) {
+            isResolved = true;
+            reject(err);
+          }
+        });
+      };
 
-      process.on('close', (code) => {
-        clearTimeout(timeout);
-        cleanupFile();
-        
-        if (isResolved) return;
-        isResolved = true;
-        
-        const runtime = Date.now() - startTime;
-        
-        if (code !== 0) {
-          reject(new Error(stderr || 'Runtime Error'));
-        } else {
-          resolve({ output: stdout, runtime });
-        }
-      });
-
-      process.on('error', (err) => {
-        clearTimeout(timeout);
-        cleanupFile();
-        
-        if (!isResolved) {
-          isResolved = true;
-          reject(err);
-        }
-      });
+      tryCompile();
     });
   }
 

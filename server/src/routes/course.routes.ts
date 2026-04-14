@@ -13,6 +13,6 @@ router.post('/:id/enroll', authenticate, courseController.enrollCourse);
 router.put('/:id/progress', authenticate, courseController.updateProgress);
 router.post('/', authenticate, authorize('teacher', 'admin'), courseController.createCourse);
 router.put('/:id', authenticate, authorize('teacher', 'admin'), courseController.updateCourse);
-router.delete('/:id', authenticate, authorize('admin'), courseController.deleteCourse);
+router.delete('/:id', authenticate, authorize('teacher', 'admin'), courseController.deleteCourse);
 
 export default router;

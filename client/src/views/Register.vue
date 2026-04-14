@@ -18,6 +18,22 @@
             <el-form-item prop="email">
               <el-input v-model="form.email" placeholder="邮箱" size="large" prefix-icon="Message" />
             </el-form-item>
+            <el-form-item prop="role">
+              <el-select v-model="form.role" placeholder="选择角色" size="large" style="width: 100%;">
+                <el-option label="学生" value="student">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <el-icon><User /></el-icon>
+                    <span>学生 - 学习编程知识</span>
+                  </div>
+                </el-option>
+                <el-option label="教师" value="teacher">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <el-icon><UserFilled /></el-icon>
+                    <span>教师 - 管理课程和题目</span>
+                  </div>
+                </el-option>
+              </el-select>
+            </el-form-item>
             <el-form-item prop="password">
               <el-input v-model="form.password" type="password" placeholder="密码" size="large" prefix-icon="Lock" show-password />
             </el-form-item>
@@ -45,6 +61,7 @@ import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
+import { User, UserFilled } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
@@ -56,6 +73,7 @@ const loading = ref(false)
 const form = reactive({
   username: '',
   email: '',
+  role: 'student',
   password: '',
   confirmPassword: ''
 })
@@ -78,6 +96,9 @@ const rules: FormRules = {
     { required: true, message: '请输入邮箱', trigger: 'blur' },
     { type: 'email', message: '请输入有效的邮箱地址', trigger: 'blur' }
   ],
+  role: [
+    { required: true, message: '请选择角色', trigger: 'change' }
+  ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
     { min: 6, message: '密码长度至少为6个字符', trigger: 'blur' }
@@ -94,10 +115,21 @@ const handleRegister = async () => {
   
   loading.value = true
   try {
-    const success = await userStore.register(form.username, form.email, form.password)
+    const success = await userStore.register(form.username, form.email, form.password, form.role)
     if (success) {
       ElMessage.success('注册成功')
-      router.push('/')
+      
+      // 根据角色跳转到不同页面
+      switch (form.role) {
+        case 'teacher':
+          router.push('/teacher')
+          break
+        case 'admin':
+          router.push('/admin')
+          break
+        default:
+          router.push('/')
+      }
     } else {
       ElMessage.error('注册失败，请重试')
     }

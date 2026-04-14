@@ -72,8 +72,25 @@ const handleLogin = async () => {
     const success = await userStore.login(form.email, form.password)
     if (success) {
       ElMessage.success('登录成功')
+      
+      // 根据角色跳转到不同页面
       const redirect = route.query.redirect as string
-      router.push(redirect || '/')
+      if (redirect) {
+        router.push(redirect)
+      } else {
+        // 根据用户角色跳转
+        const role = userStore.user?.role
+        switch (role) {
+          case 'admin':
+            router.push('/admin')
+            break
+          case 'teacher':
+            router.push('/teacher')
+            break
+          default:
+            router.push('/')
+        }
+      }
     } else {
       ElMessage.error('邮箱或密码错误')
     }

@@ -36,8 +36,9 @@
           </h2>
           <div class="header-actions">
             <el-select v-model="language" size="small" style="width: 120px;">
-              <el-option label="JavaScript" value="javascript" />
               <el-option label="Python" value="python" />
+              <el-option label="C/C++" value="cpp" />
+              <el-option label="C" value="c" />
             </el-select>
           </div>
         </div>
@@ -153,7 +154,7 @@ const problems = ref<Problem[]>([])
 const selectedProblem = ref<Problem | null>(null)
 const difficultyFilter = ref('')
 const activeTab = ref('description')
-const language = ref('javascript')
+const language = ref('python')
 const code = ref('')
 const running = ref(false)
 const submitting = ref(false)

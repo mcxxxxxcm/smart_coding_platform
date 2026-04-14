@@ -28,6 +28,8 @@ export const courseApi = {
     category?: string
     difficulty?: string
     search?: string
+    status?: string
+    teacher_only?: boolean
   }): Promise<ApiResponse<Course[]>> {
     return request.get('/courses', { params })
   },

@@ -19,6 +19,8 @@ export const problemApi = {
     difficulty?: string
     category?: string
     search?: string
+    status?: string
+    teacher_only?: boolean
   }): Promise<ApiResponse<Problem[]>> {
     return request.get('/problems', { params })
   },

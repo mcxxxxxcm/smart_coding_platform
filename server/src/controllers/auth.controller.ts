@@ -10,7 +10,11 @@ export class AuthController {
   async register(req: Request, res: Response): Promise<void> {
     console.log('注册请求收到:', req.body);
     try {
-      const { username, email, password } = req.body;
+      const { username, email, password, role = 'student' } = req.body;
+      
+      // 验证角色是否有效
+      const validRoles = ['student', 'teacher', 'admin'];
+      const userRole = validRoles.includes(role) ? role : 'student';
       
       console.log('检查用户是否存在...');
       const [existingUsers] = await pool.execute(
@@ -33,8 +37,8 @@ export class AuthController {
       console.log('插入用户...');
       const [result] = await pool.execute(
         `INSERT INTO users (username, email, password, role, level, experience, points, created_at, updated_at)
-         VALUES (?, ?, ?, 'student', 1, 0, 0, NOW(), NOW())`,
-        [username, email, hashedPassword]
+         VALUES (?, ?, ?, ?, 1, 0, 0, NOW(), NOW())`,
+        [username, email, hashedPassword, userRole]
       );
       
       const insertResult = result as { insertId: number };
@@ -54,7 +58,7 @@ export class AuthController {
             id: userId,
             username,
             email,
-            role: 'student'
+            role: userRole
           }
         }
       } as ApiResponse);

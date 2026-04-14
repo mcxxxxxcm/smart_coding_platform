@@ -1,10 +1,12 @@
 import { Router } from 'express';
-import { authenticate } from '../middleware/auth.middleware';
+import { authenticate, authorize } from '../middleware/auth.middleware';
 import { UserController } from '../controllers/user.controller';
 
 const router = Router();
 const userController = new UserController();
 
+router.get('/stats/teacher', authenticate, authorize('teacher'), userController.getTeacherStats);
+router.get('/', authenticate, authorize('teacher', 'admin'), userController.getUsers);
 router.get('/profile', authenticate, userController.getProfile);
 router.put('/profile', authenticate, userController.updateProfile);
 router.put('/password', authenticate, userController.changePassword);

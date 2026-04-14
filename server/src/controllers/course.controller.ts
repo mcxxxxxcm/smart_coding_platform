@@ -7,37 +7,55 @@ export class CourseController {
   async getCourses(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       console.log('获取课程列表...');
-      const { page = '1', limit = '10', category, difficulty, search } = req.query as PaginatedQuery & {
+      const { page = '1', limit = '10', category, difficulty, search, status, teacher_only } = req.query as PaginatedQuery & {
         category?: string;
         difficulty?: string;
         search?: string;
+        status?: string;
+        teacher_only?: string;
       };
       
       const pageNum = parseInt(page as string) || 1;
       const limitNum = parseInt(limit as string) || 10;
       const offset = (pageNum - 1) * limitNum;
       
-      let whereClause = "WHERE status = 'published'";
+      let whereClause = 'WHERE 1=1';
       const params: (string | number)[] = [];
       
+      // 如果是教师且请求自己的课程，显示所有状态
+      if (teacher_only === 'true' && req.user?.role === 'teacher') {
+        whereClause += ' AND c.teacher_id = ?';
+        params.push(req.user.id);
+      } else if (req.user?.role === 'admin') {
+        // 管理员可以看到所有课程
+      } else {
+        // 其他用户只能看到已发布的课程
+        whereClause += " AND c.status = 'published'";
+      }
+      
+      if (status && (req.user?.role === 'admin' || req.user?.role === 'teacher')) {
+        whereClause += ' AND c.status = ?';
+        params.push(status);
+      }
+      
       if (category) {
-        whereClause += ' AND category = ?';
+        whereClause += ' AND c.category = ?';
         params.push(category);
       }
       
       if (difficulty) {
-        whereClause += ' AND difficulty = ?';
+        whereClause += ' AND c.difficulty = ?';
         params.push(difficulty);
       }
       
       if (search) {
-        whereClause += ' AND (title LIKE ? OR description LIKE ?)';
+        whereClause += ' AND (c.title LIKE ? OR c.description LIKE ?)';
         params.push(`%${search}%`, `%${search}%`);
       }
       
       const sql = `SELECT 
         c.id, c.title, c.description, c.cover_image, c.category, c.difficulty,
-        c.duration, c.price, c.enrollment_count, c.rating, c.created_at,
+        c.duration, c.price, c.enrollment_count, c.rating, c.status, c.created_at,
         u.username as teacher_name, u.avatar as teacher_avatar
        FROM courses c
        LEFT JOIN users u ON c.teacher_id = u.id
@@ -50,7 +68,7 @@ export class CourseController {
       
       const [rows] = await pool.execute(sql, params);
       
-      const countSql = `SELECT COUNT(*) as total FROM courses ${whereClause}`;
+      const countSql = `SELECT COUNT(*) as total FROM courses c ${whereClause}`;
       const [countRows] = await pool.execute(countSql, params);
       
       const countData = countRows as { total: number }[];
@@ -314,11 +332,22 @@ export class CourseController {
       const { title, description, category, difficulty, duration, price, cover_image } = req.body;
       const teacherId = req.user!.id;
       
+      console.log('创建课程参数:', { title, description, category, difficulty, duration, price, cover_image, teacherId });
+      
       const [result] = await pool.execute(
         `INSERT INTO courses 
          (title, description, category, difficulty, teacher_id, duration, price, cover_image, status, enrollment_count, rating, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft', 0, 0, NOW(), NOW())`,
-        [title, description, category, difficulty, teacherId, duration, price, cover_image]
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft', 0, 0.00, NOW(), NOW())`,
+        [
+          title || '',
+          description || '',
+          category || 'frontend',
+          difficulty || 'beginner',
+          teacherId,
+          duration || 0,
+          price || 0,
+          cover_image || null
+        ]
       );
       
       const insertResult = result as { insertId: number };
@@ -328,10 +357,12 @@ export class CourseController {
         message: '课程创建成功',
         data: { id: insertResult.insertId }
       } as ApiResponse);
-    } catch {
+    } catch (error) {
+      console.error('创建课程错误:', error);
       res.status(500).json({
         success: false,
-        message: '创建课程失败'
+        message: '创建课程失败',
+        error: error instanceof Error ? error.message : '未知错误'
       } as ApiResponse);
     }
   }
@@ -342,6 +373,8 @@ export class CourseController {
       const userId = req.user!.id;
       const userRole = req.user!.role;
       
+      console.log('更新课程 - courseId:', courseId, 'userId:', userId, 'userRole:', userRole);
+      
       const [courses] = await pool.execute(
         'SELECT teacher_id FROM courses WHERE id = ?',
         [courseId]
@@ -349,11 +382,18 @@ export class CourseController {
       
       const courseList = courses as { teacher_id: number }[];
       
+      console.log('查询到的课程:', courseList);
+      
       if (courseList.length === 0) {
         throw new AppError('课程不存在', 404);
       }
       
-      if (userRole !== 'admin' && courseList[0].teacher_id !== userId) {
+      const teacherId = Number(courseList[0].teacher_id);
+      const currentUserId = Number(userId);
+      
+      console.log('teacherId:', teacherId, 'currentUserId:', currentUserId, '比较结果:', teacherId !== currentUserId);
+      
+      if (userRole !== 'admin' && teacherId !== currentUserId) {
         throw new AppError('没有权限修改此课程', 403);
       }
       
@@ -388,6 +428,7 @@ export class CourseController {
         message: '课程更新成功'
       } as ApiResponse);
     } catch (error) {
+      console.error('更新课程错误:', error);
       if (error instanceof AppError) {
         res.status(error.statusCode).json({
           success: false,
@@ -395,13 +436,42 @@ export class CourseController {
         } as ApiResponse);
         return;
       }
-      throw error;
+      res.status(500).json({
+        success: false,
+        message: '更新课程失败'
+      } as ApiResponse);
     }
   }
 
   async deleteCourse(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const courseId = req.params.id;
+      const userId = req.user!.id;
+      const userRole = req.user!.role;
+      
+      console.log('删除课程 - courseId:', courseId, 'userId:', userId, 'userRole:', userRole);
+      
+      const [courses] = await pool.execute(
+        'SELECT teacher_id FROM courses WHERE id = ?',
+        [courseId]
+      );
+      
+      const courseList = courses as { teacher_id: number }[];
+      
+      console.log('查询到的课程:', courseList);
+      
+      if (courseList.length === 0) {
+        throw new AppError('课程不存在', 404);
+      }
+      
+      const teacherId = Number(courseList[0].teacher_id);
+      const currentUserId = Number(userId);
+      
+      console.log('teacherId:', teacherId, 'currentUserId:', currentUserId);
+      
+      if (userRole !== 'admin' && teacherId !== currentUserId) {
+        throw new AppError('没有权限删除此课程', 403);
+      }
       
       await pool.execute('DELETE FROM courses WHERE id = ?', [courseId]);
       
@@ -409,7 +479,15 @@ export class CourseController {
         success: true,
         message: '课程删除成功'
       } as ApiResponse);
-    } catch {
+    } catch (error) {
+      console.error('删除课程错误:', error);
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        } as ApiResponse);
+        return;
+      }
       res.status(500).json({
         success: false,
         message: '删除课程失败'

@@ -12,8 +12,8 @@ export const authApi = {
     return request.post('/auth/login', { email, password })
   },
 
-  register(username: string, email: string, password: string): Promise<ApiResponse<LoginResponse>> {
-    return request.post('/auth/register', { username, email, password })
+  register(username: string, email: string, password: string, role: string = 'student'): Promise<ApiResponse<LoginResponse>> {
+    return request.post('/auth/register', { username, email, password, role })
   },
 
   logout(): Promise<ApiResponse> {

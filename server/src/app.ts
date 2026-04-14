@@ -12,6 +12,7 @@ import problemRoutes from './routes/problem.routes';
 import submissionRoutes from './routes/submission.routes';
 import communityRoutes from './routes/community.routes';
 import aiRoutes from './routes/ai.routes';
+import examRoutes from './routes/exam.routes';
 import { testConnection } from './config/database';
 
 dotenv.config();
@@ -55,6 +56,8 @@ console.log('注册路由: /api/community');
 app.use('/api/community', communityRoutes);
 console.log('注册路由: /api/ai');
 app.use('/api/ai', aiRoutes);
+console.log('注册路由: /api/exams');
+app.use('/api/exams', examRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

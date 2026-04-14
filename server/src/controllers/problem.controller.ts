@@ -7,18 +7,35 @@ import { AppError } from '../middleware/error.middleware';
 export class ProblemController {
   async getProblems(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const { page = '1', limit = '20', difficulty, category, search } = req.query as PaginatedQuery & {
+      const { page = '1', limit = '20', difficulty, category, search, status, teacher_only } = req.query as PaginatedQuery & {
         difficulty?: string;
         category?: string;
         search?: string;
+        status?: string;
+        teacher_only?: string;
       };
       
       const pageNum = parseInt(page);
       const limitNum = parseInt(limit);
       const offset = (pageNum - 1) * limitNum;
       
-      let whereClause = "WHERE status = 'published'";
+      let whereClause = 'WHERE 1=1';
       const params: (string | number)[] = [];
+      
+      if (teacher_only === 'true' && req.user?.role === 'teacher') {
+        whereClause += ' AND created_by = ?';
+        params.push(req.user.id);
+      } else if (req.user?.role === 'admin') {
+        // 管理员可以看到所有题目
+      } else {
+        // 其他用户只能看到已发布的题目
+        whereClause += " AND status = 'published'";
+      }
+      
+      if (status && (req.user?.role === 'admin' || req.user?.role === 'teacher')) {
+        whereClause += ' AND status = ?';
+        params.push(status);
+      }
       
       if (difficulty) {
         whereClause += ' AND difficulty = ?';
@@ -254,6 +271,23 @@ export class ProblemController {
   async deleteProblem(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const problemId = req.params.id;
+      const userId = req.user!.id;
+      const userRole = req.user!.role;
+      
+      const [problems] = await pool.execute(
+        'SELECT created_by FROM problems WHERE id = ?',
+        [problemId]
+      );
+      
+      const problemList = problems as { created_by: number }[];
+      
+      if (problemList.length === 0) {
+        throw new AppError('题目不存在', 404);
+      }
+      
+      if (userRole !== 'admin' && problemList[0].created_by !== userId) {
+        throw new AppError('没有权限删除此题目', 403);
+      }
       
       await pool.execute('DELETE FROM problems WHERE id = ?', [problemId]);
       
@@ -263,7 +297,14 @@ export class ProblemController {
         success: true,
         message: '题目删除成功'
       } as ApiResponse);
-    } catch {
+    } catch (error) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        } as ApiResponse);
+        return;
+      }
       res.status(500).json({
         success: false,
         message: '删除题目失败'
