@@ -45,15 +45,15 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '代码演练场' }
       },
       {
-        path: 'community',
+        path: '/community',
         name: 'Community',
         component: () => import('@/views/Community.vue'),
         meta: { title: '学习社区' }
       },
       {
-        path: 'community/posts/:id',
+        path: '/community/posts/:id',
         name: 'PostDetail',
-        component: () => import('@/views/PostDetail.vue'),
+        component: () => import('@/views/community/PostDetail.vue'),
         meta: { title: '帖子详情' }
       },
       {
@@ -61,6 +61,30 @@ const routes: RouteRecordRaw[] = [
         name: 'Profile',
         component: () => import('@/views/Profile.vue'),
         meta: { title: '个人中心', requiresAuth: true }
+      },
+      {
+        path: 'exams',
+        name: 'StudentExams',
+        component: () => import('@/views/student/Exams.vue'),
+        meta: { title: '考试中心' }
+      },
+      {
+        path: 'exams/:id',
+        name: 'StudentExamDetail',
+        component: () => import('@/views/student/ExamDetail.vue'),
+        meta: { title: '考试详情' }
+      },
+      {
+        path: 'exams/:id/take',
+        name: 'ExamTaking',
+        component: () => import('@/views/student/ExamTaking.vue'),
+        meta: { title: '开始考试', requiresAuth: true }
+      },
+      {
+        path: 'courses/:id/learn',
+        name: 'CourseLearning',
+        component: () => import('@/views/student/CourseLearning.vue'),
+        meta: { title: '课程学习', requiresAuth: true }
       }
     ]
   },
@@ -94,6 +118,12 @@ const routes: RouteRecordRaw[] = [
         name: 'TeacherExams',
         component: () => import('@/views/teacher/Exams.vue'),
         meta: { title: '考试管理' }
+      },
+      {
+        path: 'exams/:id/analytics',
+        name: 'TeacherExamAnalytics',
+        component: () => import('@/views/teacher/ExamAnalytics.vue'),
+        meta: { title: '考试分析' }
       },
       {
         path: 'analytics',
@@ -266,8 +296,8 @@ router.beforeEach(async (to, _from, next) => {
   }
   
   // 防止跨角色访问
-  // 教师访问学生端页面时，重定向到教师端
-  if (to.path.startsWith('/') && !to.path.startsWith('/teacher') && !to.path.startsWith('/admin') && userRole === 'teacher') {
+  // 教师访问学生端页面时，重定向到教师端（但允许访问考试和课程学习页面）
+  if (to.path.startsWith('/') && !to.path.startsWith('/teacher') && !to.path.startsWith('/admin') && userRole === 'teacher' && !to.path.startsWith('/exams') && !to.path.startsWith('/courses')) {
     next('/teacher')
     return
   }

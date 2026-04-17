@@ -62,18 +62,20 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column label="操作" width="160" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button size="small" text type="primary" @click="editCourse(row)">编辑</el-button>
-            <el-button 
-              size="small" 
-              text 
-              :type="row.status === 'published' ? 'warning' : 'success'"
-              @click="toggleStatus(row)"
-            >
-              {{ row.status === 'published' ? '下架' : '发布' }}
-            </el-button>
-            <el-button size="small" text type="danger" @click="deleteCourse(row)">删除</el-button>
+            <div class="action-buttons">
+              <el-button size="small" text type="primary" @click="editCourse(row)">编辑</el-button>
+              <el-button 
+                size="small" 
+                text 
+                :type="row.status === 'published' ? 'warning' : 'success'"
+                @click="toggleStatus(row)"
+              >
+                {{ row.status === 'published' ? '下架' : '发布' }}
+              </el-button>
+              <el-button size="small" text type="danger" @click="deleteCourse(row)">删除</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -130,6 +132,75 @@
           <span style="margin-left: 10px;">元（0 表示免费）</span>
         </el-form-item>
       </el-form>
+      
+      <el-divider content-position="left">课程章节</el-divider>
+      
+      <div class="chapters-section">
+        <div class="chapters-header">
+          <span>章节列表</span>
+          <el-button type="primary" size="small" @click="addChapter">
+            <el-icon><Plus /></el-icon>
+            添加章节
+          </el-button>
+        </div>
+        <el-collapse v-model="activeChapter" accordion>
+          <el-collapse-item
+            v-for="(chapter, chapterIndex) in courseForm.chapters"
+            :key="chapter.id"
+            :name="chapter.id"
+          >
+            <template #title>
+              <div class="chapter-header">
+                <span class="chapter-title">{{ chapter.title || '新章节' }}</span>
+                <el-button size="small" text type="danger" @click.stop="removeChapter(chapterIndex)">
+                  <el-icon><Delete /></el-icon>
+                </el-button>
+              </div>
+            </template>
+            <div class="chapter-content">
+              <el-form :model="chapter" label-width="80px">
+                <el-form-item label="章节标题">
+                  <el-input v-model="chapter.title" placeholder="请输入章节标题" />
+                </el-form-item>
+                <el-divider content-position="left">课时列表</el-divider>
+                <div class="lessons-list">
+                  <div v-for="(lesson, lessonIndex) in chapter.lessons" :key="lesson.id" class="lesson-item">
+                    <div class="lesson-header">
+                      <span>课时 {{ lessonIndex + 1 }}</span>
+                      <el-button size="small" text type="danger" @click="removeLesson(chapterIndex, lessonIndex)">
+                        <el-icon><Delete /></el-icon>
+                      </el-button>
+                    </div>
+                    <el-form :model="lesson" label-width="60px">
+                      <el-form-item label="标题">
+                        <el-input v-model="lesson.title" placeholder="课时标题" />
+                      </el-form-item>
+                      <el-form-item label="视频">
+                        <el-input v-model="lesson.video_url" placeholder="视频 URL（可使用示例视频）" />
+                        <div class="video-tips">
+                          示例视频 1: https://www.w3schools.com/html/mov_bbb.mp4
+                        </div>
+                        <div class="video-tips">
+                          示例视频 2: https://www.w3schools.com/html/movie.mp4
+                        </div>
+                      </el-form-item>
+                      <el-form-item label="时长">
+                        <el-input-number v-model="lesson.duration" :min="60" :max="3600" :step="60" />
+                        <span style="margin-left: 10px;">秒</span>
+                      </el-form-item>
+                    </el-form>
+                  </div>
+                </div>
+                <el-button type="primary" size="small" @click="addLesson(chapterIndex)" style="width: 100%;">
+                  <el-icon><Plus /></el-icon>
+                  添加课时
+                </el-button>
+              </el-form>
+            </div>
+          </el-collapse-item>
+        </el-collapse>
+      </div>
+      
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" @click="submitCourse" :loading="submitting">
@@ -143,7 +214,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, Delete } from '@element-plus/icons-vue'
 import { courseApi } from '@/api/course'
 import type { Course } from '@/types'
 
@@ -152,6 +223,7 @@ const submitting = ref(false)
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const formRef = ref<FormInstance>()
+const activeChapter = ref<string | number>('')
 
 const courses = ref<Course[]>([])
 const filters = reactive({
@@ -173,8 +245,37 @@ const courseForm = reactive({
   category: '',
   difficulty: '',
   duration: 20,
-  price: 0
+  price: 0,
+  chapters: [] as any[]
 })
+
+const addChapter = () => {
+  const newChapter = {
+    id: Date.now().toString(),
+    title: '',
+    lessons: [] as any[]
+  }
+  courseForm.chapters.push(newChapter)
+  activeChapter.value = newChapter.id
+}
+
+const removeChapter = (index: number) => {
+  courseForm.chapters.splice(index, 1)
+}
+
+const addLesson = (chapterIndex: number) => {
+  const chapter = courseForm.chapters[chapterIndex]
+  chapter.lessons.push({
+    id: Date.now().toString(),
+    title: '',
+    video_url: 'https://www.w3schools.com/html/mov_bbb.mp4',
+    duration: 300
+  })
+}
+
+const removeLesson = (chapterIndex: number, lessonIndex: number) => {
+  courseForm.chapters[chapterIndex].lessons.splice(lessonIndex, 1)
+}
 
 const rules: FormRules = {
   title: [{ required: true, message: '请输入课程名称', trigger: 'blur' }],
@@ -252,8 +353,18 @@ const showCreateDialog = () => {
     category: '',
     difficulty: '',
     duration: 20,
-    price: 0
+    price: 0,
+    chapters: [
+      {
+        id: '1',
+        title: '第一章：课程入门',
+        lessons: [
+          { id: '1-1', title: '1.1 课程介绍', video_url: 'https://www.w3schools.com/html/mov_bbb.mp4', duration: 180 }
+        ]
+      }
+    ]
   })
+  activeChapter.value = '1'
   dialogVisible.value = true
 }
 
@@ -266,8 +377,12 @@ const editCourse = (course: Course) => {
     category: course.category,
     difficulty: course.difficulty,
     duration: course.duration,
-    price: parseFloat(course.price as string) || 0
+    price: parseFloat(course.price as string) || 0,
+    chapters: (course as any).chapters || []
   })
+  if (courseForm.chapters.length > 0) {
+    activeChapter.value = courseForm.chapters[0].id
+  }
   dialogVisible.value = true
 }
 
@@ -277,13 +392,14 @@ const submitCourse = async () => {
 
   submitting.value = true
   try {
-    const data = {
+    const data: any = {
       title: courseForm.title,
       description: courseForm.description,
       category: courseForm.category,
       difficulty: courseForm.difficulty,
       duration: courseForm.duration,
-      price: courseForm.price
+      price: courseForm.price,
+      chapters: courseForm.chapters
     }
     
     if (isEdit.value) {
@@ -377,10 +493,79 @@ onMounted(fetchCourses)
   }
   
   .table-card {
+    .action-buttons {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 4px;
+      
+      .el-button {
+        padding: 4px 8px;
+      }
+    }
+    
     .pagination-wrapper {
       display: flex;
       justify-content: flex-end;
       margin-top: 20px;
+    }
+  }
+  
+  .chapters-section {
+    .chapters-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      
+      span {
+        font-weight: 500;
+        font-size: 15px;
+      }
+    }
+    
+    .chapter-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      
+      .chapter-title {
+        font-weight: 500;
+      }
+    }
+    
+    .chapter-content {
+      padding: 16px;
+      
+      .lessons-list {
+        margin: 12px 0;
+        
+        .lesson-item {
+          background: #f5f7fa;
+          padding: 16px;
+          border-radius: 6px;
+          margin-bottom: 12px;
+          
+          .lesson-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            
+            span {
+              font-weight: 500;
+              font-size: 14px;
+            }
+          }
+          
+          .video-tips {
+            font-size: 12px;
+            color: #909399;
+            margin-top: 4px;
+          }
+        }
+      }
     }
   }
 }

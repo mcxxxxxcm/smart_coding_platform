@@ -330,8 +330,8 @@ export class UserController {
          FROM users
          ${whereClause}
          ORDER BY created_at DESC
-         LIMIT ? OFFSET ?`,
-        [...params, limit, offset]
+         LIMIT ${limit} OFFSET ${offset}`,
+        params
       );
       
       const [countRows] = await pool.execute(

@@ -2,15 +2,23 @@
   <div class="practice-page">
     <div class="practice-layout">
       <!-- 左侧题目列表 -->
-      <aside class="problem-sidebar">
+      <aside class="problem-sidebar" :class="{ collapsed: sidebarCollapsed }">
         <div class="sidebar-header">
-          <h3>题目列表</h3>
-          <el-select v-model="difficultyFilter" placeholder="难度" size="small">
-            <el-option label="全部" value="" />
-            <el-option label="简单" value="easy" />
-            <el-option label="中等" value="medium" />
-            <el-option label="困难" value="hard" />
-          </el-select>
+          <h3 v-if="!sidebarCollapsed">题目列表</h3>
+          <div class="header-controls">
+            <el-select v-if="!sidebarCollapsed" v-model="difficultyFilter" placeholder="难度" size="small">
+              <el-option label="全部" value="" />
+              <el-option label="简单" value="easy" />
+              <el-option label="中等" value="medium" />
+              <el-option label="困难" value="hard" />
+            </el-select>
+            <el-button 
+              size="small" 
+              :icon="sidebarCollapsed ? 'Expand' : 'Fold'" 
+              @click="toggleSidebar"
+              circle
+            />
+          </div>
         </div>
         <div class="problem-list" v-loading="loading">
           <div
@@ -21,7 +29,7 @@
             @click="selectProblem(problem)"
           >
             <span class="problem-id">{{ problem.id }}</span>
-            <span class="problem-title">{{ problem.title }}</span>
+            <span class="problem-title" v-if="!sidebarCollapsed">{{ problem.title }}</span>
             <span class="difficulty-tag" :class="problem.difficulty">{{ getDifficultyText(problem.difficulty) }}</span>
           </div>
         </div>
@@ -43,92 +51,80 @@
           </div>
         </div>
 
-        <!-- IDE 区域 -->
-        <div class="ide-container">
-          <!-- 上半部分：题目描述 + 代码编辑器 -->
-          <div class="ide-top">
-            <!-- 题目描述标签页 -->
-            <el-tabs v-model="activeTab" class="ide-tabs">
-              <el-tab-pane label="题目描述" name="description">
-                <div class="problem-description">
-                  <p>{{ selectedProblem.description }}</p>
-                  
-                  <div v-if="selectedProblem.examples && selectedProblem.examples.length > 0" class="examples-section">
-                    <h4>示例</h4>
-                    <div v-for="(example, index) in selectedProblem.examples" :key="index" class="example-box">
-                      <div class="example-item">
-                        <strong>输入：</strong>
-                        <pre>{{ example.input }}</pre>
-                      </div>
-                      <div class="example-item">
-                        <strong>输出：</strong>
-                        <pre>{{ example.output }}</pre>
-                      </div>
-                      <div v-if="example.explanation" class="example-item">
-                        <strong>解释：</strong>
-                        <p>{{ example.explanation }}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </el-tab-pane>
-
-              <el-tab-pane label="代码编辑器" name="editor">
-                <div class="code-editor-wrapper">
-                  <textarea 
-                    v-model="code" 
-                    class="code-textarea"
-                    placeholder="在此输入你的代码..."
-                    spellcheck="false"
-                  ></textarea>
-                </div>
-              </el-tab-pane>
-            </el-tabs>
+        <!-- 左右分栏：题目描述 + 代码编辑器 -->
+        <div class="content-split">
+          <!-- 左侧：题目描述 -->
+          <div class="description-panel" :style="{ flex: `0 0 ${splitRatio}%` }">
+            <div class="panel-header">
+              <span class="panel-title">题目描述</span>
+            </div>
+            <div class="description-content">
+              <div class="problem-description" v-html="renderedDescription"></div>
+            </div>
           </div>
 
-          <!-- 下半部分：控制台输出 -->
-          <div class="console-panel">
-            <div class="console-toolbar">
-              <div class="toolbar-left">
-                <span class="console-title">控制台</span>
-                <span v-if="output" class="status-badge" :class="output.status">
-                  {{ output.status === 'running' ? '运行中' : output.status === 'success' ? '通过' : '未通过' }}
-                </span>
-              </div>
-              <div class="toolbar-right">
-                <el-button type="primary" size="small" @click="runCode" :loading="running">
-                  <el-icon><VideoPlay /></el-icon> 运行
-                </el-button>
-                <el-button type="success" size="small" @click="submitCode" :loading="submitting">
-                  <el-icon><Check /></el-icon> 提交
-                </el-button>
-                <el-button size="small" @click="clearOutput" v-if="output">清空</el-button>
+          <!-- 中间：可拖拽分隔条 -->
+          <div class="splitter" @mousedown="startResize"></div>
+
+          <!-- 右侧：代码编辑器 -->
+          <div class="editor-panel" :style="{ flex: `0 0 ${100 - splitRatio}%` }">
+            <div class="panel-header">
+              <span class="panel-title">代码编辑器</span>
+            </div>
+            <div class="editor-content">
+              <textarea 
+                v-model="code" 
+                class="code-textarea"
+                placeholder="在此输入你的代码..."
+                spellcheck="false"
+              ></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- 底部：控制台面板 -->
+        <div class="console-panel" :style="{ height: consoleHeight + 'px' }">
+          <div class="console-resizer" @mousedown="startConsoleResize"></div>
+          <div class="console-toolbar">
+            <div class="toolbar-left">
+              <span class="console-title">控制台</span>
+              <span v-if="output" class="status-badge" :class="output.status">
+                {{ output.status === 'running' ? '运行中' : output.status === 'success' ? '通过' : '未通过' }}
+              </span>
+            </div>
+            <div class="toolbar-right">
+              <el-button type="primary" size="small" @click="runCode" :loading="running">
+                <el-icon><VideoPlay /></el-icon> 运行
+              </el-button>
+              <el-button type="success" size="small" @click="submitCode" :loading="submitting">
+                <el-icon><Check /></el-icon> 提交
+              </el-button>
+              <el-button size="small" @click="clearOutput" v-if="output">清空</el-button>
+            </div>
+          </div>
+          
+          <div class="console-body">
+            <!-- 运行中状态 -->
+            <div v-if="output && output.status === 'running'" class="console-output running">
+              <div class="loading-indicator">
+                <el-icon class="is-loading"><Loading /></el-icon>
+                <span>正在执行代码...</span>
               </div>
             </div>
             
-            <div class="console-body">
-              <!-- 运行中状态 -->
-              <div v-if="output && output.status === 'running'" class="console-output running">
-                <div class="loading-indicator">
-                  <el-icon class="is-loading"><Loading /></el-icon>
-                  <span>正在执行代码...</span>
-                </div>
+            <!-- 有输出结果 -->
+            <div v-else-if="output" class="console-output" :class="output.status">
+              <div class="output-header">
+                <span class="output-label">━━ 运行结果 ━━</span>
               </div>
-              
-              <!-- 有输出结果 -->
-              <div v-else-if="output" class="console-output" :class="output.status">
-                <div class="output-header">
-                  <span class="output-label">━━ 运行结果 ━━</span>
-                </div>
-                <pre class="output-content">{{ output.message }}</pre>
-              </div>
-              
-              <!-- 空状态 -->
-              <div v-else class="console-placeholder">
-                <el-icon><Monitor /></el-icon>
-                <p>点击"运行"按钮执行代码</p>
-                <p class="hint">代码输出将显示在这里</p>
-              </div>
+              <pre class="output-content">{{ output.message }}</pre>
+            </div>
+            
+            <!-- 空状态 -->
+            <div v-else class="console-placeholder">
+              <el-icon><Monitor /></el-icon>
+              <p>点击"运行"按钮执行代码</p>
+              <p class="hint">代码输出将显示在这里</p>
             </div>
           </div>
         </div>
@@ -147,22 +143,32 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Document, VideoPlay, Check, Loading, Monitor } from '@element-plus/icons-vue'
 import { problemApi, submissionApi } from '@/api/problem'
+import { marked } from 'marked'
 import type { Problem } from '@/types'
 
 const loading = ref(false)
 const problems = ref<Problem[]>([])
 const selectedProblem = ref<Problem | null>(null)
 const difficultyFilter = ref('')
-const activeTab = ref('description')
 const language = ref('python')
 const code = ref('')
 const running = ref(false)
 const submitting = ref(false)
 const output = ref<{ status: string; message: string } | null>(null)
+const sidebarCollapsed = ref(false)
+
+// 分隔条位置
+const splitRatio = ref(50) // 左侧占百分比
+const consoleHeight = ref(280)
 
 const filteredProblems = computed(() => {
   if (!difficultyFilter.value) return problems.value
   return problems.value.filter(p => p.difficulty === difficultyFilter.value)
+})
+
+const renderedDescription = computed(() => {
+  if (!selectedProblem.value?.description) return ''
+  return marked(selectedProblem.value.description)
 })
 
 const getDifficultyText = (difficulty: string) => {
@@ -188,6 +194,10 @@ const getStatusText = (status: string) => {
   return statusTexts[status] || status
 }
 
+const toggleSidebar = () => {
+  sidebarCollapsed.value = !sidebarCollapsed.value
+}
+
 const fetchProblems = async () => {
   loading.value = true
   try {
@@ -205,11 +215,54 @@ const selectProblem = (problem: Problem) => {
   selectedProblem.value = problem
   code.value = problem.template_code?.[language.value] || ''
   output.value = null
-  activeTab.value = 'description'
 }
 
 const clearOutput = () => {
   output.value = null
+}
+
+// 拖拽分隔条
+const startResize = (e: MouseEvent) => {
+  e.preventDefault()
+  const startX = e.clientX
+  const startRatio = splitRatio.value
+  const container = document.querySelector('.content-split') as HTMLElement
+  if (!container) return
+
+  const onMouseMove = (moveEvent: MouseEvent) => {
+    const deltaX = moveEvent.clientX - startX
+    const containerWidth = container.offsetWidth
+    const deltaRatio = (deltaX / containerWidth) * 100
+    splitRatio.value = Math.max(20, Math.min(80, startRatio + deltaRatio))
+  }
+
+  const onMouseUp = () => {
+    document.removeEventListener('mousemove', onMouseMove)
+    document.removeEventListener('mouseup', onMouseUp)
+  }
+
+  document.addEventListener('mousemove', onMouseMove)
+  document.addEventListener('mouseup', onMouseUp)
+}
+
+// 拖拽控制台高度
+const startConsoleResize = (e: MouseEvent) => {
+  e.preventDefault()
+  const startY = e.clientY
+  const startHeight = consoleHeight.value
+
+  const onMouseMove = (moveEvent: MouseEvent) => {
+    const deltaY = startY - moveEvent.clientY
+    consoleHeight.value = Math.max(150, Math.min(600, startHeight + deltaY))
+  }
+
+  const onMouseUp = () => {
+    document.removeEventListener('mousemove', onMouseMove)
+    document.removeEventListener('mouseup', onMouseUp)
+  }
+
+  document.addEventListener('mousemove', onMouseMove)
+  document.addEventListener('mouseup', onMouseUp)
 }
 
 const runCode = async () => {
@@ -228,11 +281,17 @@ const runCode = async () => {
       try {
         const result = await submissionApi.getSubmission(res.data.submissionId)
         
+        const testResults = result.data.test_results
+        
         let message = `状态：${getStatusText(result.data.status)}\n`
         message += `运行时间：${result.data.runtime}ms | 内存：${result.data.memory}MB\n\n`
         
-        if (result.data.test_results && result.data.test_results.length > 0) {
-          const testResult = result.data.test_results[0]
+        if (testResults && testResults.message) {
+          message += `${testResults.message}\n\n`
+        }
+        
+        if (testResults && testResults.results && testResults.results.length > 0) {
+          const testResult = testResults.results[0]
           
           message += `【你的输出】\n${testResult.output || '(无输出)'}\n\n`
           
@@ -280,8 +339,13 @@ const submitCode = async () => {
     
     setTimeout(async () => {
       const result = await submissionApi.getSubmission(res.data.submissionId)
+      
+      const testResults = result.data.test_results
+      
       if (result.data.status === 'accepted') {
         ElMessage.success('🎉 恭喜！通过所有测试用例！')
+      } else if (testResults && testResults.passedCount !== undefined) {
+        ElMessage.warning(`通过测试案例 ${testResults.passedCount}/${testResults.totalTestCases}，请继续努力`)
       } else {
         ElMessage.warning('未通过所有测试用例，请继续努力')
       }
@@ -289,8 +353,12 @@ const submitCode = async () => {
       let message = `状态：${getStatusText(result.data.status)}\n`
       message += `运行时间：${result.data.runtime}ms | 内存：${result.data.memory}MB\n\n`
       
-      if (result.data.test_results && result.data.test_results.length > 0) {
-        const testResult = result.data.test_results[0]
+      if (testResults && testResults.message) {
+        message += `${testResults.message}\n\n`
+      }
+      
+      if (testResults && testResults.results && testResults.results.length > 0) {
+        const testResult = testResults.results[0]
         message += `【你的输出】\n${testResult.output || '(无输出)'}\n\n`
         if (testResult.expected) {
           message += `【期望输出】\n${testResult.expected}`
@@ -327,15 +395,33 @@ onMounted(fetchProblems)
 /* 左侧题目列表 */
 .problem-sidebar {
   width: 280px;
+  min-width: 60px;
   background: white;
   border-right: 1px solid #e0e0e0;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  transition: width 0.3s ease, min-width 0.3s ease;
+  
+  &.collapsed {
+    width: 60px;
+    min-width: 60px;
+    
+    .problem-item {
+      justify-content: center;
+      padding: 10px 0;
+    }
+    
+    .problem-title,
+    .problem-id,
+    .difficulty-tag {
+      display: none;
+    }
+  }
 }
 
 .sidebar-header {
-  padding: 16px;
+  padding: 12px;
   border-bottom: 1px solid #e0e0e0;
   display: flex;
   justify-content: space-between;
@@ -347,6 +433,13 @@ onMounted(fetchProblems)
     font-size: 14px;
     font-weight: 600;
     color: $text-primary;
+    white-space: nowrap;
+  }
+  
+  .header-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
 }
 
@@ -356,12 +449,12 @@ onMounted(fetchProblems)
 }
 
 .problem-item {
-  padding: 12px 16px;
+  padding: 10px 12px;
   border-bottom: 1px solid #f0f0f0;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   transition: all 0.15s ease;
   
   &:hover {
@@ -395,6 +488,7 @@ onMounted(fetchProblems)
   border-radius: 4px;
   font-size: 11px;
   font-weight: 500;
+  white-space: nowrap;
   
   &.easy { background: #dcfce7; color: #166534; }
   &.medium { background: #fef3c7; color: #92400e; }
@@ -411,7 +505,7 @@ onMounted(fetchProblems)
 }
 
 .problem-header {
-  padding: 16px 20px;
+  padding: 12px 20px;
   border-bottom: 1px solid #e0e0e0;
   display: flex;
   justify-content: space-between;
@@ -420,7 +514,7 @@ onMounted(fetchProblems)
   
   h2 {
     margin: 0;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 600;
     color: $text-primary;
     display: flex;
@@ -439,111 +533,192 @@ onMounted(fetchProblems)
   gap: 10px;
 }
 
-/* IDE 容器 */
-.ide-container {
+/* 左右分栏布局 */
+.content-split {
   flex: 1;
   display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.ide-top {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
   overflow: hidden;
   min-height: 0;
 }
 
-.ide-tabs {
-  height: 100%;
+.description-panel {
+  flex: 0 0 auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #e0e0e0;
+  
+  .panel-header {
+    padding: 8px 16px;
+    background: #fafafa;
+    border-bottom: 1px solid #e0e0e0;
+    
+    .panel-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: $text-primary;
+    }
+  }
+  
+  .description-content {
+    flex: 1;
+    overflow-y: auto;
+  }
+}
+
+.splitter {
+  width: 6px;
+  background: #f0f0f0;
+  cursor: col-resize;
+  flex-shrink: 0;
+  position: relative;
+  
+  &:hover {
+    background: $primary-color;
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 2px;
+    height: 40px;
+    background: #ccc;
+    border-radius: 2px;
+  }
+}
+
+.editor-panel {
+  flex: 0 0 auto;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   
-  :deep(.el-tabs__header) {
-    margin: 0;
-    padding: 0 20px;
+  .panel-header {
+    padding: 8px 16px;
     background: #fafafa;
     border-bottom: 1px solid #e0e0e0;
+    
+    .panel-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: $text-primary;
+    }
   }
   
-  :deep(.el-tabs__content) {
+  .editor-content {
     flex: 1;
-    overflow: auto;
-  }
-  
-  :deep(.el-tab-pane) {
-    height: 100%;
+    overflow: hidden;
   }
 }
 
 /* 题目描述 */
 .problem-description {
   padding: 20px;
-  line-height: 1.7;
+  line-height: 1.8;
   color: $text-secondary;
   font-size: 14px;
   
   p {
     margin-bottom: 16px;
   }
-}
-
-.examples-section {
-  margin-top: 20px;
   
-  h4 {
-    font-size: 15px;
+  :deep(h3) {
+    font-size: 16px;
     color: $text-primary;
-    margin-bottom: 12px;
-  }
-}
-
-.example-box {
-  background: #f8f9fa;
-  border-radius: 6px;
-  padding: 14px;
-  margin-bottom: 12px;
-  border: 1px solid #e9ecef;
-}
-
-.example-item {
-  margin-bottom: 10px;
-  
-  &:last-child {
-    margin-bottom: 0;
+    margin: 20px 0 12px 0;
+    font-weight: 600;
+    border-left: 3px solid $primary-color;
+    padding-left: 12px;
+    line-height: 1.4;
+    
+    &:first-child {
+      margin-top: 0;
+    }
   }
   
-  strong {
-    color: $text-primary;
+  :deep(strong) {
+    color: $primary-color;
+    font-weight: 600;
+  }
+  
+  :deep(code) {
+    background: #f0f7ff;
+    color: #e6a23c;
+    padding: 2px 6px;
+    border-radius: 4px;
     font-size: 13px;
+    font-family: 'Consolas', 'Monaco', monospace;
   }
   
-  pre {
+  :deep(pre) {
     background: #1e1e1e;
     color: #d4d4d4;
-    padding: 10px 12px;
-    border-radius: 4px;
-    margin-top: 6px;
-    font-family: 'Fira Code', 'Consolas', monospace;
-    font-size: 13px;
-    line-height: 1.5;
+    padding: 16px;
+    border-radius: 8px;
     overflow-x: auto;
+    margin: 12px 0;
+    font-size: 13px;
+    line-height: 1.6;
+    font-family: 'Consolas', 'Monaco', monospace;
+    
+    code {
+      background: none;
+      color: inherit;
+      padding: 0;
+    }
   }
   
-  p {
-    margin: 6px 0 0 0;
-    color: #666;
-    font-size: 13px;
+  :deep(blockquote) {
+    background: linear-gradient(135deg, #fff9e6 0%, #fff3cd 100%);
+    border-left: 4px solid #ffc107;
+    padding: 12px 16px;
+    margin: 16px 0;
+    border-radius: 0 8px 8px 0;
+    color: #856404;
+    
+    p {
+      margin-bottom: 0;
+    }
+    
+    strong {
+      color: #856404;
+    }
+  }
+  
+  :deep(hr) {
+    border: none;
+    height: 2px;
+    background: linear-gradient(to right, transparent, #e4e7ed, transparent);
+    margin: 20px 0;
+  }
+  
+  :deep(ul), :deep(ol) {
+    padding-left: 24px;
+    margin: 12px 0;
+    
+    li {
+      margin-bottom: 8px;
+      
+      strong {
+        color: $text-primary;
+      }
+    }
+  }
+  
+  :deep(p) {
+    margin: 8px 0;
+    
+    strong {
+      color: $text-primary;
+      font-size: 14px;
+    }
   }
 }
 
 /* 代码编辑器 */
-.code-editor-wrapper {
-  height: 100%;
-  padding: 0;
-}
-
 .code-textarea {
   width: 100%;
   height: 100%;
@@ -570,8 +745,22 @@ onMounted(fetchProblems)
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  max-height: 45%;
-  min-height: 180px;
+  position: relative;
+}
+
+.console-resizer {
+  height: 6px;
+  background: #f0f0f0;
+  cursor: row-resize;
+  position: absolute;
+  top: -3px;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  
+  &:hover {
+    background: $primary-color;
+  }
 }
 
 .console-toolbar {

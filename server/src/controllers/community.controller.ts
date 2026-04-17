@@ -11,20 +11,24 @@ export class CommunityController {
         search?: string;
       };
       
-      const offset = (parseInt(page) - 1) * parseInt(limit);
+      const pageNum = parseInt(page as string) || 1;
+      const limitNum = parseInt(limit as string) || 10;
+      const offset = (pageNum - 1) * limitNum;
       
-      let whereClause = "WHERE status = 'published'";
-      const params: (string | number)[] = [];
+      let whereClause = "WHERE p.status = 'published'";
+      const params: any[] = [];
       
       if (category) {
-        whereClause += ' AND category = ?';
+        whereClause += ' AND p.category = ?';
         params.push(category);
       }
       
       if (search) {
-        whereClause += ' AND (title LIKE ? OR content LIKE ?)';
+        whereClause += ' AND (p.title LIKE ? OR p.content LIKE ?)';
         params.push(`%${search}%`, `%${search}%`);
       }
+      
+      console.log('查询参数:', { page: pageNum, limit: limitNum, offset, whereClause, params });
       
       const [rows] = await pool.execute(
         `SELECT 
@@ -35,28 +39,31 @@ export class CommunityController {
          LEFT JOIN users u ON p.author_id = u.id
          ${whereClause}
          ORDER BY p.is_pinned DESC, p.created_at DESC
-         LIMIT ? OFFSET ?`,
-        [...params, parseInt(limit), offset]
+         LIMIT ${limitNum} OFFSET ${offset}`,
+        params
       );
       
       const [countRows] = await pool.execute(
-        `SELECT COUNT(*) as total FROM posts ${whereClause}`,
+        `SELECT COUNT(*) as total FROM posts p ${whereClause}`,
         params
       );
       
       const countData = countRows as { total: number }[];
       
+      console.log('查询结果:', { total: countData[0]?.total, rows: (rows as any[]).length });
+      
       res.json({
         success: true,
         data: rows,
         pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
+          page: pageNum,
+          limit: limitNum,
           total: countData[0].total,
-          totalPages: Math.ceil(countData[0].total / parseInt(limit))
+          totalPages: Math.ceil(countData[0].total / limitNum)
         }
       } as ApiResponse);
-    } catch {
+    } catch (error) {
+      console.error('获取帖子列表错误:', error);
       res.status(500).json({
         success: false,
         message: '获取帖子列表失败'
@@ -299,23 +306,42 @@ export class CommunityController {
       const limit = parseInt(req.query.limit as string) || 20;
       const offset = (page - 1) * limit;
       
+      console.log('获取评论参数:', { postId, page, limit, offset });
+      
       const [rows] = await pool.execute(
         `SELECT 
-          c.id, c.content, c.parent_id, c.like_count, c.created_at,
+          c.id, c.content, c.parent_id, c.like_count, c.is_pinned, c.created_at,
           u.id as author_id, u.username as author_name, u.avatar as author_avatar, u.level as author_level
          FROM comments c
          LEFT JOIN users u ON c.user_id = u.id
          WHERE c.post_id = ?
-         ORDER BY c.created_at ASC
-         LIMIT ? OFFSET ?`,
-        [postId, limit, offset]
+         ORDER BY c.is_pinned DESC, c.created_at ASC
+         LIMIT ${limit} OFFSET ${offset}`,
+        [postId]
       );
+      
+      const [countRows] = await pool.execute(
+        'SELECT COUNT(*) as total FROM comments WHERE post_id = ?',
+        [postId]
+      );
+      
+      const countData = countRows as { total: number }[];
+      const total = countData[0]?.total || 0;
+      
+      console.log('获取评论结果:', { total, rows: (rows as any[]).length });
       
       res.json({
         success: true,
-        data: rows
+        data: rows,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit)
+        }
       } as ApiResponse);
-    } catch {
+    } catch (error) {
+      console.error('获取评论错误:', error);
       res.status(500).json({
         success: false,
         message: '获取评论失败'
@@ -446,6 +472,96 @@ export class CommunityController {
         } as ApiResponse);
       }
     } catch {
+      res.status(500).json({
+        success: false,
+        message: '操作失败'
+      } as ApiResponse);
+    }
+  }
+
+  async togglePinPost(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const postId = req.params.id;
+      const userRole = req.user!.role;
+      
+      if (userRole !== 'admin' && userRole !== 'teacher') {
+        throw new AppError('只有教师和管理员可以置顶帖子', 403);
+      }
+      
+      const [posts] = await pool.execute(
+        'SELECT is_pinned FROM posts WHERE id = ?',
+        [postId]
+      );
+      
+      const postList = posts as { is_pinned: boolean }[];
+      if (postList.length === 0) {
+        throw new AppError('帖子不存在', 404);
+      }
+      
+      const newPinned = !postList[0].is_pinned;
+      await pool.execute(
+        'UPDATE posts SET is_pinned = ? WHERE id = ?',
+        [newPinned, postId]
+      );
+      
+      res.json({
+        success: true,
+        message: newPinned ? '置顶成功' : '取消置顶成功',
+        data: { is_pinned: newPinned }
+      } as ApiResponse);
+    } catch (error) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        } as ApiResponse);
+        return;
+      }
+      res.status(500).json({
+        success: false,
+        message: '操作失败'
+      } as ApiResponse);
+    }
+  }
+
+  async togglePinComment(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const commentId = req.params.id;
+      const userRole = req.user!.role;
+      
+      if (userRole !== 'admin' && userRole !== 'teacher') {
+        throw new AppError('只有教师和管理员可以置顶评论', 403);
+      }
+      
+      const [comments] = await pool.execute(
+        'SELECT is_pinned FROM comments WHERE id = ?',
+        [commentId]
+      );
+      
+      const commentList = comments as { is_pinned: boolean }[];
+      if (commentList.length === 0) {
+        throw new AppError('评论不存在', 404);
+      }
+      
+      const newPinned = !commentList[0].is_pinned;
+      await pool.execute(
+        'UPDATE comments SET is_pinned = ? WHERE id = ?',
+        [newPinned, commentId]
+      );
+      
+      res.json({
+        success: true,
+        message: newPinned ? '置顶成功' : '取消置顶成功',
+        data: { is_pinned: newPinned }
+      } as ApiResponse);
+    } catch (error) {
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        } as ApiResponse);
+        return;
+      }
       res.status(500).json({
         success: false,
         message: '操作失败'

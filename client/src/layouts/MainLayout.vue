@@ -11,6 +11,7 @@
           <router-link to="/" class="nav-link" :class="{ active: $route.path === '/' }">首页</router-link>
           <router-link to="/courses" class="nav-link" :class="{ active: $route.path.startsWith('/courses') }">课程中心</router-link>
           <router-link to="/practice" class="nav-link" :class="{ active: $route.path.startsWith('/practice') || $route.path.startsWith('/problems') }">在线练习</router-link>
+          <router-link to="/exams" class="nav-link" :class="{ active: $route.path.startsWith('/exams') }">考试中心</router-link>
           <router-link to="/playground" class="nav-link" :class="{ active: $route.path === '/playground' }">代码演练</router-link>
           <router-link to="/community" class="nav-link" :class="{ active: $route.path.startsWith('/community') }">学习社区</router-link>
         </nav>

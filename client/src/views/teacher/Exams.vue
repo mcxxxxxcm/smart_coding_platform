@@ -51,19 +51,22 @@
             {{ row.start_time ? formatDateTime(row.start_time) : '未设置' }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" width="200" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button size="small" text type="primary" @click="editExam(row)">编辑</el-button>
-            <el-button 
-              size="small" 
-              text 
-              :type="row.status === 'published' ? 'warning' : 'success'"
-              @click="toggleStatus(row)"
-              :disabled="row.status === 'ended'"
-            >
-              {{ row.status === 'published' ? '下架' : '发布' }}
-            </el-button>
-            <el-button size="small" text type="danger" @click="deleteExam(row)">删除</el-button>
+            <div class="action-buttons">
+              <el-button size="small" text type="primary" @click="viewAnalytics(row)">分析</el-button>
+              <el-button size="small" text type="primary" @click="editExam(row)">编辑</el-button>
+              <el-button 
+                size="small" 
+                text 
+                :type="row.status === 'published' ? 'warning' : 'success'"
+                @click="toggleStatus(row)"
+                :disabled="row.status === 'ended'"
+              >
+                {{ row.status === 'published' ? '下架' : '发布' }}
+              </el-button>
+              <el-button size="small" text type="danger" @click="deleteExam(row)">删除</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -217,10 +220,13 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { examApi } from '@/api/exam'
 import type { Exam } from '@/api/exam'
+
+const router = useRouter()
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -505,6 +511,10 @@ const deleteExam = async (exam: Exam) => {
   }
 }
 
+const viewAnalytics = (exam: Exam) => {
+  router.push(`/teacher/exams/${exam.id}/analytics`)
+}
+
 onMounted(fetchExams)
 </script>
 
@@ -530,6 +540,17 @@ onMounted(fetchExams)
   }
   
   .table-card {
+    .action-buttons {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 4px;
+      
+      .el-button {
+        padding: 4px 8px;
+      }
+    }
+    
     .pagination-wrapper {
       display: flex;
       justify-content: flex-end;

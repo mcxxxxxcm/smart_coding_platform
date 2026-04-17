@@ -49,5 +49,13 @@ export const communityApi = {
 
   likeComment(id: number): Promise<ApiResponse<{ liked: boolean }>> {
     return request.post(`/community/comments/${id}/like`)
+  },
+
+  togglePinPost(id: number): Promise<ApiResponse<{ is_pinned: boolean }>> {
+    return request.patch(`/community/posts/${id}/pin`)
+  },
+
+  togglePinComment(id: number): Promise<ApiResponse<{ is_pinned: boolean }>> {
+    return request.patch(`/community/comments/${id}/pin`)
   }
 }

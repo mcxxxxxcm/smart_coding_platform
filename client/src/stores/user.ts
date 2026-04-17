@@ -7,10 +7,12 @@ import router from '@/router'
 export const useUserStore = defineStore('user', () => {
   const user = ref<User | null>(null)
   const token = ref<string | null>(localStorage.getItem('token'))
+  const enrolledCourses = ref<number[]>(JSON.parse(localStorage.getItem('enrolledCourses') || '[]'))
 
   const isLoggedIn = computed(() => !!token.value)
   const isAdmin = computed(() => user.value?.role === 'admin')
   const isTeacher = computed(() => user.value?.role === 'teacher')
+  const isEnrolled = computed(() => (courseId: number) => enrolledCourses.value.includes(courseId))
 
   async function login(email: string, password: string) {
     try {
@@ -54,15 +56,25 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
+  function updateEnrolledCourses(courseId: number) {
+    if (!enrolledCourses.value.includes(courseId)) {
+      enrolledCourses.value.push(courseId)
+      localStorage.setItem('enrolledCourses', JSON.stringify(enrolledCourses.value))
+    }
+  }
+
   return {
     user,
     token,
+    enrolledCourses,
     isLoggedIn,
     isAdmin,
     isTeacher,
+    isEnrolled,
     login,
     register,
     logout,
-    fetchUser
+    fetchUser,
+    updateEnrolledCourses
   }
 })

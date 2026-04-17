@@ -60,5 +60,20 @@ export const examApi = {
 
   deleteExam(id: number): Promise<ApiResponse> {
     return request.delete(`/exams/${id}`)
+  },
+
+  getExamHistory(params?: {
+    page?: number
+    limit?: number
+  }): Promise<ApiResponse<any>> {
+    return request.get('/exams/history', { params })
+  },
+
+  getExamSubmissionDetail(attemptId: number): Promise<ApiResponse<any>> {
+    return request.get(`/exams/submission/${attemptId}`)
+  },
+
+  getWrongQuestions(): Promise<ApiResponse<any[]>> {
+    return request.get('/exams/wrong-questions')
   }
 }

@@ -31,28 +31,47 @@
         <main class="posts-main">
           <div class="posts-list" v-loading="loading">
             <div
-              v-for="post in posts"
+              v-for="post in sortedPosts"
               :key="post.id"
               class="post-card"
-              @click="$router.push(`/community/posts/${post.id}`)"
+              :class="{ 'pinned-post': post.is_pinned }"
+              @click="viewPost(post.id)"
             >
               <div class="post-header">
                 <el-avatar :size="40" :src="post.author_avatar || undefined">
-                  {{ post.author_name?.charAt(0) }}
+                  {{ post.author_name ? post.author_name.charAt(0) : '?' }}
                 </el-avatar>
                 <div class="post-meta">
-                  <span class="author">{{ post.author_name }}</span>
-                  <span class="time">{{ formatTime(post.created_at) }}</span>
+                  <span class="author">{{ post.author_name || '未知' }}</span>
+                  <span class="time">{{ post.created_at ? formatTime(post.created_at) : '' }}</span>
                 </div>
-                <span class="category-tag" :class="post.category">{{ getCategoryLabel(post.category) }}</span>
+                <el-tag v-if="post.is_pinned" type="danger" size="small" style="margin-right: 8px">
+                  <el-icon><Top /></el-icon> 置顶
+                </el-tag>
+                <span class="category-tag" :class="post.category || ''">{{ getCategoryLabel(post.category) }}</span>
               </div>
-              <h3 class="post-title">{{ post.title }}</h3>
-              <p class="post-content">{{ truncate(post.content, 150) }}</p>
+              <h3 class="post-title">{{ post.title || '无标题' }}</h3>
+              <p class="post-content">{{ truncate(post.content || '', 150) }}</p>
               <div class="post-footer">
-                <span><el-icon><View /></el-icon> {{ post.view_count }}</span>
-                <span><el-icon><ChatDotRound /></el-icon> {{ post.comment_count }}</span>
-                <span><el-icon><Star /></el-icon> {{ post.like_count }}</span>
+                <span><el-icon><View /></el-icon> {{ post.view_count || 0 }}</span>
+                <span><el-icon><ChatDotRound /></el-icon> {{ post.comment_count || 0 }}</span>
+                <span><el-icon><Star /></el-icon> {{ post.like_count || 0 }}</span>
+                <div v-if="canModerate" class="post-actions" @click.stop>
+                  <el-button
+                    :type="post.is_pinned ? 'warning' : 'info'"
+                    size="small"
+                    text
+                    @click="togglePin(post)"
+                  >
+                    <el-icon><Top /></el-icon>
+                    {{ post.is_pinned ? '取消置顶' : '置顶' }}
+                  </el-button>
+                </div>
               </div>
+            </div>
+            
+            <div v-if="!loading && posts.length === 0" class="empty-state">
+              <el-empty description="暂无帖子" />
             </div>
           </div>
           
@@ -94,17 +113,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, onMounted } from 'vue'
+import { ref, reactive, watch, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElEmpty } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { communityApi } from '@/api/community'
 import { useUserStore } from '@/stores/user'
 import type { Post } from '@/types'
 import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
+
+// 扩展dayjs的相对时间功能
+dayjs.extend(relativeTime)
 
 const router = useRouter()
 const userStore = useUserStore()
+
+const canModerate = computed(() => {
+  return userStore.user?.role === 'admin' || userStore.user?.role === 'teacher'
+})
 
 const loading = ref(false)
 const posts = ref<Post[]>([])
@@ -126,6 +153,15 @@ const pagination = reactive({
   total: 0
 })
 
+// 排序帖子：置顶在前
+const sortedPosts = computed(() => {
+  return [...posts.value].sort((a, b) => {
+    if (a.is_pinned && !b.is_pinned) return -1
+    if (!a.is_pinned && b.is_pinned) return 1
+    return 0
+  })
+})
+
 const postForm = reactive({
   title: '',
   category: '',
@@ -138,7 +174,8 @@ const postRules: FormRules = {
   content: [{ required: true, message: '请输入内容', trigger: 'blur' }]
 }
 
-const getCategoryLabel = (category: string) => {
+const getCategoryLabel = (category: string | undefined | null) => {
+  if (!category) return '未知'
   const labels: Record<string, string> = {
     question: '问答',
     article: '文章',
@@ -147,13 +184,19 @@ const getCategoryLabel = (category: string) => {
   return labels[category] || category
 }
 
-const formatTime = (time: string) => {
+const formatTime = (time: string | undefined | null) => {
+  if (!time) return ''
   return dayjs(time).fromNow()
 }
 
-const truncate = (text: string, length: number) => {
+const truncate = (text: string | undefined | null, length: number) => {
+  if (!text) return ''
   if (text.length <= length) return text
   return text.substring(0, length) + '...'
+}
+
+const viewPost = (postId: number) => {
+  router.push(`/community/posts/${postId}`)
 }
 
 const fetchPosts = async () => {
@@ -166,11 +209,25 @@ const fetchPosts = async () => {
     if (activeCategory.value !== 'all') {
       params.category = activeCategory.value
     }
+    
     const res = await communityApi.getPosts(params)
-    posts.value = res.data || []
-    if (res.pagination) {
-      pagination.total = res.pagination.total
+    
+    if (res.data) {
+      posts.value = res.data || []
+      if (res.pagination) {
+        pagination.total = res.pagination.total
+      }
+    } else if (res.rows) {
+      posts.value = res.rows || []
+      pagination.total = res.total || 0
+    } else {
+      posts.value = []
+      pagination.total = 0
     }
+  } catch (error) {
+    console.error('获取帖子列表失败:', error)
+    ElMessage.error('获取帖子列表失败')
+    posts.value = []
   } finally {
     loading.value = false
   }
@@ -191,12 +248,31 @@ const createPost = async () => {
     const res = await communityApi.createPost(postForm)
     ElMessage.success('发布成功')
     showCreateDialog.value = false
+    
+    // 重置表单
     postForm.title = ''
     postForm.category = ''
     postForm.content = ''
+    
+    // 跳转到新发布的帖子
     router.push(`/community/posts/${res.data.id}`)
+  } catch (error) {
+    console.error('发布帖子失败:', error)
+    ElMessage.error('发布帖子失败')
   } finally {
     creating.value = false
+  }
+}
+
+const togglePin = async (post: Post) => {
+  try {
+    const res = await communityApi.togglePinPost(post.id)
+    if (res.success) {
+      post.is_pinned = res.data.is_pinned
+      ElMessage.success(res.data.is_pinned ? '置顶成功' : '取消置顶成功')
+    }
+  } catch {
+    ElMessage.error('操作失败')
   }
 }
 
@@ -300,6 +376,11 @@ onMounted(fetchPosts)
     box-shadow: $shadow-md;
     transform: translateY(-2px);
   }
+  
+  &.pinned-post {
+    border-left: 3px solid #f56c6c;
+    background: linear-gradient(135deg, #fff5f5 0%, #ffffff 100%);
+  }
 }
 
 .post-header {
@@ -359,6 +440,11 @@ onMounted(fetchPosts)
     align-items: center;
     gap: 5px;
   }
+}
+
+.empty-state {
+  padding: 60px 0;
+  text-align: center;
 }
 
 .pagination {

@@ -29,6 +29,13 @@ export interface Course {
   updated_at: string
   teacher_name?: string
   teacher_avatar?: string
+  isEnrolled?: boolean
+}
+
+export interface CourseDetail extends Course {
+  chapters: Chapter[]
+  userProgress?: number
+  isCompleted?: boolean
 }
 
 export interface Chapter {
@@ -133,6 +140,8 @@ export interface Comment {
   parent_id: number | null
   content: string
   like_count: number
+  is_liked?: boolean
+  is_pinned?: boolean
   created_at: string
   author_name?: string
   author_avatar?: string

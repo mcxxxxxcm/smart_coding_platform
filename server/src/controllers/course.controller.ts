@@ -68,6 +68,25 @@ export class CourseController {
       
       const [rows] = await pool.execute(sql, params);
       
+      // 添加报名状态
+      const coursesWithEnrollment = (rows as any[]).map(course => {
+        return { ...course, isEnrolled: false };
+      });
+      
+      if (req.user) {
+        const courseIds = coursesWithEnrollment.map(c => c.id);
+        if (courseIds.length > 0) {
+          const [enrollments] = await pool.execute(
+            'SELECT course_id FROM user_enrollments WHERE user_id = ? AND course_id IN (?)',
+            [req.user.id, courseIds]
+          );
+          const enrolledCourseIds = new Set((enrollments as any[]).map(e => e.course_id));
+          coursesWithEnrollment.forEach(course => {
+            course.isEnrolled = enrolledCourseIds.has(course.id);
+          });
+        }
+      }
+      
       const countSql = `SELECT COUNT(*) as total FROM courses c ${whereClause}`;
       const [countRows] = await pool.execute(countSql, params);
       
@@ -77,7 +96,7 @@ export class CourseController {
       res.json({
         success: true,
         message: '获取成功',
-        data: rows,
+        data: coursesWithEnrollment,
         pagination: {
           page: pageNum,
           limit: limitNum,
@@ -140,19 +159,26 @@ export class CourseController {
       
       (course as Record<string, unknown>).chapters = chapters;
       
+      // 设置报名状态
       if (req.user) {
         const [enrollment] = await pool.execute(
           'SELECT * FROM user_enrollments WHERE user_id = ? AND course_id = ?',
           [req.user.id, courseId]
         );
         
-        (course as Record<string, unknown>).isEnrolled = (enrollment as unknown[]).length > 0;
+        const isEnrolled = (enrollment as unknown[]).length > 0;
+        (course as Record<string, unknown>).isEnrolled = isEnrolled;
         
-        if ((enrollment as unknown[]).length > 0) {
+        console.log('用户报名状态:', { userId: req.user.id, courseId, isEnrolled });
+        
+        if (isEnrolled) {
           const enrollmentData = enrollment as { progress: number; completed: boolean }[];
           (course as Record<string, unknown>).userProgress = enrollmentData[0].progress;
           (course as Record<string, unknown>).isCompleted = enrollmentData[0].completed;
         }
+      } else {
+        // 未登录用户默认未报名
+        (course as Record<string, unknown>).isEnrolled = false;
       }
       
       res.json({
@@ -249,7 +275,12 @@ export class CourseController {
       );
       
       if ((existing as unknown[]).length > 0) {
-        throw new AppError('已经报名过该课程', 400);
+        // 已经报名过，直接返回成功
+        res.json({
+          success: true,
+          message: '已报名该课程'
+        } as ApiResponse);
+        return;
       }
       
       await pool.execute(

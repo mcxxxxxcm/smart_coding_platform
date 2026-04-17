@@ -95,9 +95,12 @@ export class SubmissionController {
       let status = 'accepted';
       let totalRuntime = 0;
       let totalMemory = 0;
+      let passedCount = 0;
       
       for (const result of results) {
-        if (result.status !== 'accepted') {
+        if (result.status === 'accepted') {
+          passedCount++;
+        } else {
           status = result.status;
         }
         totalRuntime += result.runtime;
@@ -106,11 +109,20 @@ export class SubmissionController {
       
       const accepted = status === 'accepted';
       
+      // 计算通过的测试案例数量
+      const totalTestCases = testCases.length;
+      const testResults = {
+        results,
+        passedCount,
+        totalTestCases,
+        message: accepted ? '全部测试通过' : `通过测试案例 ${passedCount}/${totalTestCases}`
+      };
+      
       await pool.execute(
         `UPDATE submissions 
          SET status = ?, runtime = ?, memory = ?, test_results = ?
          WHERE id = ?`,
-        [status, totalRuntime, totalMemory, JSON.stringify(results), submissionId]
+        [status, totalRuntime, totalMemory, JSON.stringify(testResults), submissionId]
       );
       
       await pool.execute(

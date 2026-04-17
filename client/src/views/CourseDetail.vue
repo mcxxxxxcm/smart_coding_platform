@@ -21,7 +21,7 @@
               立即报名
             </el-button>
             <el-button v-else type="success" size="large" @click="startLearning">
-              继续学习
+              开始学习
             </el-button>
           </div>
         </div>
@@ -66,14 +66,14 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { courseApi } from '@/api/course'
 import { useUserStore } from '@/stores/user'
-import type { Course, Lesson } from '@/types'
+import type { CourseDetail, Chapter, Lesson } from '@/api/course'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 
 const loading = ref(false)
-const course = ref<Course | null>(null)
+const course = ref<CourseDetail | null>(null)
 const activeChapters = ref<number[]>([])
 
 const getCategoryIcon = (category: string) => {
@@ -90,7 +90,12 @@ const fetchCourse = async () => {
   loading.value = true
   try {
     const res = await courseApi.getCourseById(Number(route.params.id))
-    course.value = res.data as Course
+    course.value = res.data
+    console.log('课程详情:', course.value)
+    // 持久化报名状态到用户存储
+    if (course.value?.isEnrolled && userStore.isLoggedIn) {
+      userStore.updateEnrolledCourses(course.value.id)
+    }
     if (course.value?.chapters?.length) {
       activeChapters.value = [course.value.chapters[0].id]
     }
@@ -109,16 +114,29 @@ const enroll = async () => {
   try {
     await courseApi.enrollCourse(Number(route.params.id))
     ElMessage.success('报名成功')
-    fetchCourse()
-  } catch {
+    
+    // 立即更新本地状态
+    if (course.value) {
+      course.value.isEnrolled = true
+    }
+    
+    // 更新用户存储中的报名状态
+    userStore.updateEnrolledCourses(Number(route.params.id))
+    
+    // 刷新课程数据
+    await fetchCourse()
+  } catch (error) {
+    console.error('报名失败:', error)
     ElMessage.error('报名失败')
   }
 }
 
 const startLearning = () => {
-  if (course.value?.chapters?.length && course.value.chapters[0].lessons?.length) {
-    playLesson(course.value.chapters[0].lessons[0])
+  if (!course.value?.isEnrolled) {
+    ElMessage.warning('请先报名课程')
+    return
   }
+  router.push(`/courses/${route.params.id}/learn`)
 }
 
 const playLesson = (lesson: Lesson) => {
@@ -126,7 +144,12 @@ const playLesson = (lesson: Lesson) => {
     ElMessage.warning('请先报名课程')
     return
   }
-  ElMessage.info('视频播放功能开发中...')
+  
+  // 如果已报名，跳转到学习页面并传递课时ID
+  router.push({
+    path: `/courses/${route.params.id}/learn`,
+    query: { lesson: lesson.id }
+  })
 }
 
 onMounted(fetchCourse)

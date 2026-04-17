@@ -238,13 +238,30 @@ const recentLogs = ref([
 }
 
 .quick-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  padding: 0;
+  margin: 0;
   
   .el-button {
     width: 100%;
-    justify-content: flex-start;
+    margin: 0 0 10px;
+    padding: 14px 0;
+    height: auto;
+    font-size: 15px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: 6px;
+    border: none;
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+    
+    .el-icon {
+      font-size: 18px;
+    }
   }
 }
 
