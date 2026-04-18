@@ -188,24 +188,13 @@ const fetchDifficultyStats = async () => {
 
 const fetchTopStudents = async () => {
   try {
-    const res = await request.get('/users', { params: { role: 'student', limit: 10 } })
-    if (res.success && res.data) {
-      topStudents.value = res.data.map((u: any, index: number) => ({
-        ...u,
-        submission_count: Math.floor(Math.random() * 100) + 20,
-        accepted_count: Math.floor(Math.random() * 80) + 10,
-        acceptance_rate: Math.floor(Math.random() * 40) + 50
-      }))
+    const res = await request.get('/users/top-students', { params: { limit: 10 } })
+    if (res.success && res.data && Array.isArray(res.data)) {
+      topStudents.value = res.data
     }
   } catch (error) {
     console.error('获取学生排行失败:', error)
-    topStudents.value = [
-      { username: '张三', submission_count: 89, accepted_count: 72, acceptance_rate: 81, level: 5 },
-      { username: '李四', submission_count: 76, accepted_count: 58, acceptance_rate: 76, level: 4 },
-      { username: '王五', submission_count: 65, accepted_count: 45, acceptance_rate: 69, level: 4 },
-      { username: '赵六', submission_count: 54, accepted_count: 35, acceptance_rate: 65, level: 3 },
-      { username: '钱七', submission_count: 48, accepted_count: 28, acceptance_rate: 58, level: 3 }
-    ]
+    topStudents.value = []
   }
 }
 

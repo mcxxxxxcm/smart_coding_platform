@@ -10,7 +10,7 @@
           <el-input v-model="filters.search" placeholder="搜索学生" clearable @keyup.enter="fetchStudents" />
         </el-form-item>
         <el-form-item label="等级">
-          <el-select v-model="filters.level" placeholder="全部等级" clearable>
+          <el-select style="width: 120px" v-model="filters.level" placeholder="全部等级" clearable>
             <el-option v-for="i in 10" :key="i" :label="`等级 ${i}`" :value="i" />
           </el-select>
         </el-form-item>
@@ -29,6 +29,9 @@
             <div class="student-info">
               <el-avatar :size="28">{{ row.username?.charAt(0) }}</el-avatar>
               <span>{{ row.username }}</span>
+              <el-tag v-if="row.my_enrolled_courses > 0" type="success" size="small" effect="plain" style="margin-left: 8px">
+                已报名 {{ row.my_enrolled_courses }} 门课
+              </el-tag>
             </div>
           </template>
         </el-table-column>
@@ -40,8 +43,8 @@
         </el-table-column>
         <el-table-column prop="experience" label="经验" width="70" align="center" />
         <el-table-column prop="points" label="积分" width="70" align="center" />
-        <el-table-column prop="enrolled_courses" label="课程" width="60" align="center" />
-        <el-table-column prop="submissions" label="提交" width="60" align="center" />
+        <el-table-column prop="total_enrolled_courses" label="课程" width="60" align="center" />
+        <el-table-column prop="total_submissions" label="提交" width="60" align="center" />
         <el-table-column prop="created_at" label="注册时间" width="140">
           <template #default="{ row }">
             {{ formatDate(row.created_at) }}
@@ -128,32 +131,23 @@ const formatDate = (date: string) => {
 const fetchStudents = async () => {
   loading.value = true
   try {
-    const res = await request.get('/users', {
+    const res = await request.get('/users/enrolled-students', {
       params: {
-        role: 'student',
         page: pagination.page,
         limit: pagination.limit,
         ...filters
       }
     })
-    if (res.success) {
-      students.value = (res.data || []).map((u: any) => ({
-        ...u,
-        enrolled_courses: Math.floor(Math.random() * 5) + 1,
-        submissions: Math.floor(Math.random() * 50) + 5
-      }))
+    if (res.success && res.data) {
+      students.value = res.data || []
       if (res.pagination) {
         pagination.total = res.pagination.total
       }
     }
   } catch (error) {
     console.error('获取学生列表失败:', error)
-    students.value = [
-      { id: 1, username: '张三', email: 'zhangsan@example.com', level: 5, experience: 2500, points: 800, enrolled_courses: 3, submissions: 45, created_at: '2024-01-15' },
-      { id: 2, username: '李四', email: 'lisi@example.com', level: 4, experience: 1800, points: 600, enrolled_courses: 2, submissions: 32, created_at: '2024-02-20' },
-      { id: 3, username: '王五', email: 'wangwu@example.com', level: 3, experience: 1200, points: 400, enrolled_courses: 4, submissions: 28, created_at: '2024-03-10' }
-    ]
-    pagination.total = 3
+    students.value = []
+    pagination.total = 0
   } finally {
     loading.value = false
   }

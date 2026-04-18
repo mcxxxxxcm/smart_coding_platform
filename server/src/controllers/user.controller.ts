@@ -368,62 +368,55 @@ export class UserController {
       
       console.log('获取教师统计数据 - teacherId:', teacherId);
       
+      // 1. 获取教师所有已发布课程的ID
+      const [courseRows] = await pool.execute(
+        `SELECT id FROM courses WHERE teacher_id = ? AND status = 'published'`,
+        [teacherId]
+      );
+      const courseIds = (courseRows as any[]).map(r => r.id);
+      const activeCourses = courseIds.length;
+      
+      // 2. 获取所有选课学生总数
       let studentCount = 0;
-      let totalSubmissions = 0;
-      let acceptedSubmissions = 0;
-      let activeCourses = 0;
-      
-      try {
+      if (courseIds.length > 0) {
+        const placeholders = courseIds.map(() => '?').join(',');
         const [studentResult] = await pool.execute(
-          `SELECT COUNT(DISTINCT ue.user_id) as count
-           FROM user_enrollments ue
-           JOIN courses c ON ue.course_id = c.id
-           WHERE c.teacher_id = ?`,
-          [teacherId]
+          `SELECT COUNT(DISTINCT user_id) as count
+           FROM user_enrollments
+           WHERE course_id IN (${placeholders})`,
+          [...courseIds]
         );
-        const studentData = studentResult as { count: number }[];
-        studentCount = studentData[0]?.count || 0;
-      } catch (e) {
-        console.log('获取学生数失败:', e);
+        studentCount = (studentResult as any[])[0]?.count || 0;
       }
       
-      try {
-        const [submissionResult] = await pool.execute(
+      // 3. 获取所有选课学生的总提交数（所有题目，不限于教师创建的）
+      let totalSubmissions = 0;
+      if (studentCount > 0 && courseIds.length > 0) {
+        const coursePlaceholders = courseIds.map(() => '?').join(',');
+        const [subResult] = await pool.execute(
           `SELECT COUNT(*) as count
            FROM submissions s
-           JOIN problems p ON s.problem_id = p.id
-           WHERE p.created_by = ?`,
-          [teacherId]
+           WHERE s.user_id IN (
+             SELECT DISTINCT user_id FROM user_enrollments WHERE course_id IN (${coursePlaceholders})
+           )`,
+          [...courseIds]
         );
-        const submissionData = submissionResult as { count: number }[];
-        totalSubmissions = submissionData[0]?.count || 0;
-      } catch (e) {
-        console.log('获取提交数失败:', e);
+        totalSubmissions = (subResult as any[])[0]?.count || 0;
       }
       
-      try {
-        const [acceptedResult] = await pool.execute(
+      // 4. 获取所有选课学生的通过数
+      let acceptedSubmissions = 0;
+      if (studentCount > 0 && courseIds.length > 0) {
+        const coursePlaceholders = courseIds.map(() => '?').join(',');
+        const [acceptResult] = await pool.execute(
           `SELECT COUNT(*) as count
            FROM submissions s
-           JOIN problems p ON s.problem_id = p.id
-           WHERE p.created_by = ? AND s.status = 'accepted'`,
-          [teacherId]
+           WHERE s.user_id IN (
+             SELECT DISTINCT user_id FROM user_enrollments WHERE course_id IN (${coursePlaceholders})
+           ) AND s.status = 'accepted'`,
+          [...courseIds]
         );
-        const acceptedData = acceptedResult as { count: number }[];
-        acceptedSubmissions = acceptedData[0]?.count || 0;
-      } catch (e) {
-        console.log('获取通过数失败:', e);
-      }
-      
-      try {
-        const [courseResult] = await pool.execute(
-          `SELECT COUNT(*) as count FROM courses WHERE teacher_id = ? AND status = 'published'`,
-          [teacherId]
-        );
-        const courseData = courseResult as { count: number }[];
-        activeCourses = courseData[0]?.count || 0;
-      } catch (e) {
-        console.log('获取课程数失败:', e);
+        acceptedSubmissions = (acceptResult as any[])[0]?.count || 0;
       }
       
       const passRate = totalSubmissions > 0 ? Math.round((acceptedSubmissions / totalSubmissions) * 100) : 0;
@@ -444,6 +437,149 @@ export class UserController {
       res.status(500).json({
         success: false,
         message: '获取统计数据失败'
+      } as ApiResponse);
+    }
+  }
+
+  async getEnrolledStudents(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const teacherId = req.user!.id;
+      const page = Math.max(parseInt(req.query.page as string) || 1, 1);
+      const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 20, 1), 100);
+      const offset = (page - 1) * limit;
+      const search = (req.query.search as string || '').trim();
+      const level = req.query.level as string;
+
+      // First get the teacher's course IDs separately
+      const [courseRows] = await pool.execute(
+        `SELECT id FROM courses WHERE teacher_id = ? AND status = 'published'`,
+        [teacherId]
+      );
+      const courseIds = (courseRows as any[]).map((r: any) => r.id);
+      let courseSubquery = 'FALSE';
+      if (courseIds.length > 0) {
+        courseSubquery = courseIds.map(id => String(id)).join(',');
+      }
+
+      // Build where clause for search/level filters
+      const filterParts: string[] = [];
+      const queryParams: any[] = [];
+
+      if (search) {
+        filterParts.push('(u.username LIKE ? OR u.email LIKE ?)');
+        queryParams.push(`%${search}%`, `%${search}%`);
+      }
+
+      if (level) {
+        filterParts.push('u.level = ?');
+        queryParams.push(parseInt(level));
+      }
+
+      const whereStr = filterParts.length > 0 ? 'AND ' + filterParts.join(' AND ') : '';
+
+      const studentQuery = `
+        SELECT 
+          u.id, u.username, u.email, u.avatar, u.level, u.experience, u.points, u.bio, u.created_at,
+          COUNT(DISTINCT ue_all.course_id) as total_enrolled_courses,
+          COUNT(DISTINCT CASE WHEN ue_my.course_id IN (${courseSubquery}) THEN ue_my.course_id END) as my_enrolled_courses,
+          COUNT(DISTINCT s.id) as total_submissions,
+          SUM(CASE WHEN s.status = 'accepted' THEN 1 ELSE 0 END) as accepted_submissions
+        FROM users u
+        LEFT JOIN user_enrollments ue_all ON u.id = ue_all.user_id
+        LEFT JOIN user_enrollments ue_my ON u.id = ue_my.user_id
+        LEFT JOIN submissions s ON u.id = s.user_id
+        WHERE u.role = 'student'
+        ${whereStr}
+        GROUP BY u.id, u.username, u.email, u.avatar, u.level, u.experience, u.points, u.bio, u.created_at
+        ORDER BY u.created_at DESC
+        LIMIT ? OFFSET ?
+      `;
+
+      const [rows] = await pool.execute(studentQuery, [...queryParams, limit, offset]);
+
+      const countQuery = `
+        SELECT COUNT(DISTINCT u.id) as total
+        FROM users u
+        WHERE u.role = 'student'
+        ${whereStr ? 'AND ' + filterParts.join(' AND ') : ''}
+      `;
+
+      const [countRows] = await pool.execute(countQuery, queryParams);
+      const total = (countRows as any[])[0]?.total || 0;
+
+      res.json({
+        success: true,
+        data: rows,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit)
+        }
+      } as ApiResponse);
+    } catch (error) {
+      console.error('获取学生列表错误:', error);
+      res.status(500).json({
+        success: false,
+        message: '获取学生列表失败'
+      } as ApiResponse);
+    }
+  }
+
+  async getTopStudents(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const teacherId = req.user!.id;
+      const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 10, 1), 100);
+
+      // Get the teacher's course IDs separately to avoid subquery parameter issues
+      const [courseRows] = await pool.execute(
+        `SELECT id FROM courses WHERE teacher_id = ? AND status = 'published'`,
+        [teacherId]
+      );
+      const courseIds = (courseRows as any[]).map((r: any) => r.id);
+
+      let whereClause = 'WHERE u.role = "student"';
+      const params: any[] = [];
+
+      if (courseIds.length > 0) {
+        const courseList = courseIds.map((id: number) => String(id)).join(',');
+        whereClause += ` AND u.id IN (
+          SELECT DISTINCT user_id FROM user_enrollments WHERE course_id IN (${courseList})
+        )`;
+      }
+
+      const [rows] = await pool.execute(
+        `SELECT 
+          u.id, u.username, u.email, u.level,
+          COUNT(DISTINCT s.id) as submission_count,
+          SUM(CASE WHEN s.status = 'accepted' THEN 1 ELSE 0 END) as accepted_count
+         FROM users u
+         LEFT JOIN submissions s ON u.id = s.user_id
+         ${whereClause}
+         GROUP BY u.id, u.username, u.email, u.level
+         HAVING submission_count > 0
+         ORDER BY submission_count DESC
+         LIMIT ?`,
+        params.length > 0 ? [...params, limit] : [limit]
+      );
+
+      // 计算通过率
+      const result = (rows as any[]).map((row: any) => ({
+        ...row,
+        acceptance_rate: row.submission_count > 0 
+          ? Math.round((row.accepted_count / row.submission_count) * 100) 
+          : 0
+      }));
+
+      res.json({
+        success: true,
+        data: result
+      } as ApiResponse);
+    } catch (error) {
+      console.error('获取学生排行错误:', error);
+      res.status(500).json({
+        success: false,
+        message: '获取学生排行失败'
       } as ApiResponse);
     }
   }

@@ -6,6 +6,8 @@ const router = Router();
 const userController = new UserController();
 
 router.get('/stats/teacher', authenticate, authorize('teacher'), userController.getTeacherStats);
+router.get('/enrolled-students', authenticate, authorize('teacher'), userController.getEnrolledStudents);
+router.get('/top-students', authenticate, authorize('teacher'), userController.getTopStudents);
 router.get('/', authenticate, authorize('teacher', 'admin'), userController.getUsers);
 router.get('/profile', authenticate, userController.getProfile);
 router.put('/profile', authenticate, userController.updateProfile);
