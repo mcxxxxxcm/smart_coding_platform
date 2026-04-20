@@ -22,13 +22,23 @@
       
       <main class="problem-main" v-if="currentProblem">
         <div class="problem-header">
-          <h2>{{ currentProblem.title }}</h2>
-          <div class="problem-tags">
-            <span class="difficulty-tag" :class="currentProblem.difficulty">
-              {{ getDifficultyText(currentProblem.difficulty) }}
-            </span>
-            <el-tag v-for="tag in currentProblem.tags" :key="tag" size="small">{{ tag }}</el-tag>
+          <div class="header-left">
+            <h2>{{ currentProblem.title }}</h2>
+            <div class="problem-tags">
+              <span class="difficulty-tag" :class="currentProblem.difficulty">
+                {{ getDifficultyText(currentProblem.difficulty) }}
+              </span>
+              <el-tag v-for="tag in currentProblem.tags" :key="tag" size="small">{{ tag }}</el-tag>
+            </div>
           </div>
+          <el-button 
+            type="primary" 
+            :icon="MagicStick" 
+            @click="aiPanelVisible = !aiPanelVisible"
+            :class="{ active: aiPanelVisible }"
+          >
+            {{ aiPanelVisible ? '收起 AI' : 'AI 助手' }}
+          </el-button>
         </div>
         
         <el-tabs v-model="activeTab">
@@ -94,15 +104,81 @@
           </el-tab-pane>
         </el-tabs>
       </main>
+      
+      <aside class="ai-panel" v-if="aiPanelVisible && currentProblem">
+        <div class="ai-panel-header">
+          <el-icon :size="20" color="#626aef"><MagicStick /></el-icon>
+          <span>AI 编程助手</span>
+        </div>
+        
+        <div class="ai-actions">
+          <el-button size="small" @click="askHint" :loading="aiLoading">
+            <el-icon><Light /></el-icon> 获取提示
+          </el-button>
+          <el-button size="small" @click="explainCode" :loading="aiLoading">
+            <el-icon><Document /></el-icon> 代码解释
+          </el-button>
+          <el-button size="small" @click="debugCode" :loading="aiLoading">
+            <el-icon><WarnTriangleFilled /></el-icon> 代码调试
+          </el-button>
+        </div>
+        
+        <div class="ai-messages" ref="messagesRef">
+          <div v-if="aiMessages.length === 0" class="ai-empty">
+            <el-icon :size="48" color="#dcdfe6"><MagicStick /></el-icon>
+            <p>遇到不会的题目？</p>
+            <p class="hint-text">点击按钮获取 AI 帮助</p>
+          </div>
+          <div
+            v-for="(msg, index) in aiMessages"
+            :key="index"
+            class="ai-message"
+            :class="msg.role"
+          >
+            <div class="message-avatar">
+              <el-icon v-if="msg.role === 'assistant'" :size="16" color="#626aef"><MagicStick /></el-icon>
+              <el-icon v-else :size="16" color="#409eff"><User /></el-icon>
+            </div>
+            <div class="message-content">
+              <pre class="message-text">{{ msg.content }}</pre>
+            </div>
+          </div>
+          <div v-if="aiLoading" class="ai-message assistant">
+            <div class="message-avatar">
+              <el-icon :size="16" color="#626aef"><MagicStick /></el-icon>
+            </div>
+            <div class="message-content">
+              <div class="typing-indicator">
+                <span></span><span></span><span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="ai-input-area">
+          <el-input
+            v-model="aiInput"
+            type="textarea"
+            :rows="3"
+            placeholder="输入你的问题，向 AI 助手提问..."
+            @keyup.ctrl.enter="sendAiMessage"
+          />
+          <el-button type="primary" size="small" @click="sendAiMessage" :loading="aiLoading" style="width: 100%; margin-top: 8px">
+            <el-icon><Promotion /></el-icon> 发送 (Ctrl+Enter)
+          </el-button>
+        </div>
+      </aside>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { MagicStick, Light, Document, WarnTriangleFilled, User, Promotion } from '@element-plus/icons-vue'
 import { problemApi, submissionApi } from '@/api/problem'
+import { aiApi } from '@/api/ai'
 import type { Problem } from '@/types'
 
 const route = useRoute()
@@ -115,6 +191,13 @@ const code = ref('')
 const running = ref(false)
 const submitting = ref(false)
 const output = ref<{ status: string; message: string } | null>(null)
+
+// AI assistant
+const aiPanelVisible = ref(false)
+const aiLoading = ref(false)
+const aiInput = ref('')
+const aiMessages = ref<Array<{ role: 'user' | 'assistant'; content: string }>>([])
+const messagesRef = ref<HTMLElement>()
 
 const getDifficultyText = (difficulty: string) => {
   const texts: Record<string, string> = {
@@ -191,6 +274,96 @@ const submitCode = async () => {
   } finally {
     submitting.value = false
   }
+}
+
+const scrollToBottom = () => {
+  nextTick(() => {
+    if (messagesRef.value) {
+      messagesRef.value.scrollTop = messagesRef.value.scrollHeight
+    }
+  })
+}
+
+const askAi = async (apiCall: () => Promise<any>, actionName: string) => {
+  if (!currentProblem.value) {
+    ElMessage.warning('请先选择一道题目')
+    return
+  }
+
+  aiLoading.value = true
+  try {
+    const res = await apiCall()
+    if (res.success && res.data) {
+      aiMessages.value.push({
+        role: 'assistant',
+        content: Object.values(res.data)[0] as string
+      })
+      scrollToBottom()
+    } else {
+      ElMessage.error(res.message || `${actionName}失败`)
+    }
+  } catch (error: any) {
+    ElMessage.error(error.message || `${actionName}失败`)
+  } finally {
+    aiLoading.value = false
+  }
+}
+
+const askHint = () => {
+  aiMessages.value.push({ role: 'user', content: `💡 获取提示` })
+  scrollToBottom()
+  askAi(
+    () => aiApi.getHint(
+      currentProblem.value!.title,
+      currentProblem.value!.description,
+      code.value || '',
+      language.value
+    ),
+    '获取提示'
+  )
+}
+
+const explainCode = () => {
+  if (!code.value.trim()) {
+    ElMessage.warning('请先编写代码')
+    return
+  }
+  aiMessages.value.push({ role: 'user', content: `📖 解释代码` })
+  scrollToBottom()
+  askAi(
+    () => aiApi.explainCode(code.value, language.value),
+    '代码解释'
+  )
+}
+
+const debugCode = () => {
+  if (!code.value.trim()) {
+    ElMessage.warning('请先编写代码')
+    return
+  }
+  const errorMsg = output.value?.status === 'error' ? output.value.message : undefined
+  aiMessages.value.push({ role: 'user', content: `🔧 代码调试${errorMsg ? '（附带错误信息）' : ''}` })
+  scrollToBottom()
+  askAi(
+    () => aiApi.debugCode(code.value, language.value, errorMsg),
+    '代码调试'
+  )
+}
+
+const sendAiMessage = () => {
+  if (!aiInput.value.trim()) return
+  aiMessages.value.push({ role: 'user', content: aiInput.value })
+  scrollToBottom()
+  askAi(
+    () => aiApi.chat(
+      aiInput.value,
+      currentProblem.value
+        ? `题目：${currentProblem.value.title}\n描述：${currentProblem.value.description}\n语言：${language.value}\n代码：\n${code.value}`
+        : undefined
+    ),
+    '发送消息'
+  )
+  aiInput.value = ''
 }
 
 watch(() => route.params.id, () => {
@@ -401,5 +574,144 @@ onMounted(fetchProblems)
   &.error {
     border-left: 3px solid #ef4444;
   }
+}
+
+.problem-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.header-left {
+  flex: 1;
+}
+
+.ai-panel {
+  width: 360px;
+  background: white;
+  border-left: 1px solid $border-color;
+  display: flex;
+  flex-direction: column;
+}
+
+.ai-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  border-bottom: 1px solid $border-color;
+  font-weight: 600;
+  font-size: 15px;
+  color: #626aef;
+}
+
+.ai-actions {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid $border-color;
+  flex-wrap: wrap;
+}
+
+.ai-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ai-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: $text-secondary;
+  
+  p {
+    margin: 8px 0 0;
+    font-size: 14px;
+  }
+  
+  .hint-text {
+    font-size: 12px;
+    color: #c0c4cc;
+  }
+}
+
+.ai-message {
+  display: flex;
+  gap: 10px;
+  
+  &.user {
+    flex-direction: row-reverse;
+    
+    .message-content {
+      background: #626aef;
+      color: white;
+      
+      .message-text {
+        color: white;
+      }
+    }
+  }
+  
+  .message-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #f5f7fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  
+  .message-content {
+    max-width: 85%;
+    background: #f5f7fa;
+    border-radius: 8px;
+    padding: 10px 14px;
+    
+    .message-text {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.6;
+      color: $text-primary;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: inherit;
+    }
+  }
+}
+
+.typing-indicator {
+  display: flex;
+  gap: 4px;
+  padding: 8px 0;
+  
+  span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #626aef;
+    animation: typing 1.4s infinite ease-in-out;
+    
+    &:nth-child(1) { animation-delay: 0s; }
+    &:nth-child(2) { animation-delay: 0.2s; }
+    &:nth-child(3) { animation-delay: 0.4s; }
+  }
+}
+
+@keyframes typing {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-6px); opacity: 1; }
+}
+
+.ai-input-area {
+  padding: 16px;
+  border-top: 1px solid $border-color;
 }
 </style>

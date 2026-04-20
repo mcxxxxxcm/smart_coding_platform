@@ -208,6 +208,7 @@ onMounted(() => {
 
 <style scoped lang="scss">
 @use '@/styles/variables.scss' as *;
+@use "sass:color" as sc;
 
 .analytics-page {
   .page-header {
@@ -290,7 +291,7 @@ onMounted(() => {
         
         .bar {
           width: 40px;
-          background: linear-gradient(180deg, $primary-color 0%, lighten($primary-color, 20%) 100%);
+          background: linear-gradient(180deg, $primary-color 0%, sc.adjust($primary-color, $lightness: 20%) 100%);
           border-radius: 4px 4px 0 0;
           transition: height 0.3s ease;
         }

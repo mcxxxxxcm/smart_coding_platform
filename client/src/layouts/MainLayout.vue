@@ -52,7 +52,7 @@
       <router-view />
     </main>
     
-    <footer class="footer">
+    <footer class="footer" v-if="!hideFooter">
       <div class="footer-content">
         <div class="footer-section">
           <h4>关于我们</h4>
@@ -72,7 +72,7 @@
           <ul>
             <li><el-icon><Message /></el-icon> contact@smartcoding.com</li>
             <li><el-icon><Phone /></el-icon> 400-123-4567</li>
-            <li><el-icon><Location /></el-icon> 北京市海淀区</li>
+            <li><el-icon><Location /></el-icon> 四川省西昌市</li>
           </ul>
         </div>
         <div class="footer-section">
@@ -85,7 +85,7 @@
         </div>
       </div>
       <div class="footer-bottom">
-        <p>&copy; 2024 智能编程教学平台. All rights reserved.</p>
+        <p>&copy; 2026 智能编程教学平台. All rights reserved.</p>
       </div>
     </footer>
   </div>
@@ -93,10 +93,14 @@
 
 <script setup lang="ts">
 import { useUserStore } from '@/stores/user'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
+import { computed } from 'vue'
 
 const userStore = useUserStore()
 const router = useRouter()
+const route = useRoute()
+
+const hideFooter = computed(() => route.path.startsWith('/practice') || route.path.startsWith('/problems'))
 
 const handleCommand = (command: string) => {
   if (command === 'profile') {

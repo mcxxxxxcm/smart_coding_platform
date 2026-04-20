@@ -40,6 +40,14 @@
             <span>学生管理</span>
           </router-link>
         </div>
+        
+        <div class="nav-section">
+          <div class="section-title">互动交流</div>
+          <router-link to="/teacher/community" class="nav-item" active-class="active">
+            <el-icon><ChatDotRound /></el-icon>
+            <span>社区互动</span>
+          </router-link>
+        </div>
       </nav>
       
       <div class="sidebar-footer">
@@ -90,7 +98,7 @@ import { useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import {
   Monitor, HomeFilled, Reading, Document, EditPen,
-  DataAnalysis, User, Bell, SwitchButton
+  DataAnalysis, User, Bell, SwitchButton, ChatDotRound
 } from '@element-plus/icons-vue'
 
 const route = useRoute()

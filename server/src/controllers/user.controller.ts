@@ -456,9 +456,14 @@ export class UserController {
         [teacherId]
       );
       const courseIds = (courseRows as any[]).map((r: any) => r.id);
-      let courseSubquery = 'FALSE';
+
+      // Build the my_enrolled_courses CASE clause based on whether teacher has courses
+      let myEnrolledClause: string;
       if (courseIds.length > 0) {
-        courseSubquery = courseIds.map(id => String(id)).join(',');
+        const courseList = courseIds.map((id: number) => String(id)).join(',');
+        myEnrolledClause = `COUNT(DISTINCT CASE WHEN ue_my.course_id IN (${courseList}) THEN ue_my.course_id END) as my_enrolled_courses`;
+      } else {
+        myEnrolledClause = `0 as my_enrolled_courses`;
       }
 
       // Build where clause for search/level filters
@@ -481,7 +486,7 @@ export class UserController {
         SELECT 
           u.id, u.username, u.email, u.avatar, u.level, u.experience, u.points, u.bio, u.created_at,
           COUNT(DISTINCT ue_all.course_id) as total_enrolled_courses,
-          COUNT(DISTINCT CASE WHEN ue_my.course_id IN (${courseSubquery}) THEN ue_my.course_id END) as my_enrolled_courses,
+          ${myEnrolledClause},
           COUNT(DISTINCT s.id) as total_submissions,
           SUM(CASE WHEN s.status = 'accepted' THEN 1 ELSE 0 END) as accepted_submissions
         FROM users u
@@ -492,10 +497,14 @@ export class UserController {
         ${whereStr}
         GROUP BY u.id, u.username, u.email, u.avatar, u.level, u.experience, u.points, u.bio, u.created_at
         ORDER BY u.created_at DESC
-        LIMIT ? OFFSET ?
+        LIMIT ${limit} OFFSET ${offset}
       `;
 
-      const [rows] = await pool.execute(studentQuery, [...queryParams, limit, offset]);
+      console.log('Executing student query with params:', queryParams);
+
+      const [rows] = queryParams.length > 0
+        ? await pool.execute(studentQuery, queryParams)
+        : await pool.query(studentQuery);
 
       const countQuery = `
         SELECT COUNT(DISTINCT u.id) as total
@@ -539,8 +548,6 @@ export class UserController {
       const courseIds = (courseRows as any[]).map((r: any) => r.id);
 
       let whereClause = 'WHERE u.role = "student"';
-      const params: any[] = [];
-
       if (courseIds.length > 0) {
         const courseList = courseIds.map((id: number) => String(id)).join(',');
         whereClause += ` AND u.id IN (
@@ -548,8 +555,7 @@ export class UserController {
         )`;
       }
 
-      const [rows] = await pool.execute(
-        `SELECT 
+      const query = `SELECT 
           u.id, u.username, u.email, u.level,
           COUNT(DISTINCT s.id) as submission_count,
           SUM(CASE WHEN s.status = 'accepted' THEN 1 ELSE 0 END) as accepted_count
@@ -559,9 +565,9 @@ export class UserController {
          GROUP BY u.id, u.username, u.email, u.level
          HAVING submission_count > 0
          ORDER BY submission_count DESC
-         LIMIT ?`,
-        params.length > 0 ? [...params, limit] : [limit]
-      );
+         LIMIT ${limit}`;
+
+      const [rows] = await pool.query(query);
 
       // 计算通过率
       const result = (rows as any[]).map((row: any) => ({

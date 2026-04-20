@@ -138,6 +138,18 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '学生管理' }
       },
       {
+        path: 'community',
+        name: 'TeacherCommunity',
+        component: () => import('@/views/teacher/Community.vue'),
+        meta: { title: '社区互动' }
+      },
+      {
+        path: 'community/posts/:id',
+        name: 'TeacherPostDetail',
+        component: () => import('@/views/teacher/PostDetail.vue'),
+        meta: { title: '帖子详情' }
+      },
+      {
         path: 'profile',
         name: 'TeacherProfile',
         component: () => import('@/views/teacher/Profile.vue'),
@@ -296,8 +308,8 @@ router.beforeEach(async (to, _from, next) => {
   }
   
   // 防止跨角色访问
-  // 教师访问学生端页面时，重定向到教师端（但允许访问考试和课程学习页面）
-  if (to.path.startsWith('/') && !to.path.startsWith('/teacher') && !to.path.startsWith('/admin') && userRole === 'teacher' && !to.path.startsWith('/exams') && !to.path.startsWith('/courses')) {
+  // 教师访问学生端页面时，重定向到教师端（但允许访问考试、课程学习、社区页面）
+  if (to.path.startsWith('/') && !to.path.startsWith('/teacher') && !to.path.startsWith('/admin') && userRole === 'teacher' && !to.path.startsWith('/exams') && !to.path.startsWith('/courses') && !to.path.startsWith('/community')) {
     next('/teacher')
     return
   }

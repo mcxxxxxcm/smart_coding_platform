@@ -5,10 +5,13 @@ import { AIController } from '../controllers/ai.controller';
 const router = Router();
 const aiController = new AIController();
 
-router.post('/chat', authenticate, aiController.chat);
-router.post('/explain', authenticate, aiController.explainCode);
-router.post('/debug', authenticate, aiController.debugCode);
-router.post('/optimize', authenticate, aiController.optimizeCode);
-router.post('/hint', authenticate, aiController.getHint);
+// All AI routes require authentication
+router.use(authenticate);
+
+router.post('/chat', aiController.chat);
+router.post('/explain', aiController.explainCode);
+router.post('/debug', aiController.debugCode);
+router.post('/optimize', aiController.optimizeCode);
+router.post('/hint', aiController.getHint);
 
 export default router;
