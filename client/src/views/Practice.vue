@@ -1,7 +1,6 @@
 <template>
   <div class="practice-page">
     <div class="practice-layout">
-      <!-- 左侧题目列表 -->
       <aside class="problem-sidebar" :class="{ collapsed: sidebarCollapsed }">
         <div class="sidebar-header">
           <h3 v-if="!sidebarCollapsed">题目列表</h3>
@@ -35,14 +34,20 @@
         </div>
       </aside>
 
-      <!-- 右侧主内容区 -->
-      <main class="main-content" v-if="selectedProblem">
-        <!-- 标题栏 -->
+      <main class="main-content" :class="{ 'with-ai-panel': aiPanelVisible }" v-if="selectedProblem">
         <div class="problem-header">
           <h2>{{ selectedProblem.title }}
             <span class="difficulty-tag" :class="selectedProblem.difficulty">{{ getDifficultyText(selectedProblem.difficulty) }}</span>
           </h2>
           <div class="header-actions">
+            <el-button 
+              size="small" 
+              type="primary" 
+              :icon="MagicStick"
+              @click="toggleAiPanel"
+            >
+              AI 助手
+            </el-button>
             <el-select v-model="language" size="small" style="width: 120px;">
               <el-option label="Python" value="python" />
               <el-option label="C/C++" value="cpp" />
@@ -51,86 +56,131 @@
           </div>
         </div>
 
-        <!-- 左右分栏：题目描述 + 代码编辑器 -->
-        <div class="content-split">
-          <!-- 左侧：题目描述 -->
-          <div class="description-panel" :style="{ flex: `0 0 ${splitRatio}%` }">
-            <div class="panel-header">
-              <span class="panel-title">题目描述</span>
+        <div class="practice-body">
+          <div class="content-split">
+            <div class="description-panel" :style="{ flex: `0 0 ${splitRatio}%` }">
+              <div class="panel-header">
+                <span class="panel-title">题目描述</span>
+              </div>
+              <div class="description-content">
+                <div class="problem-description" v-html="renderedDescription"></div>
+              </div>
             </div>
-            <div class="description-content">
-              <div class="problem-description" v-html="renderedDescription"></div>
+
+            <div class="splitter" @mousedown="startResize"></div>
+
+            <div class="editor-panel" :style="{ flex: `0 0 ${100 - splitRatio}%` }">
+              <div class="panel-header">
+                <span class="panel-title">代码编辑器</span>
+              </div>
+              <div class="editor-content">
+                <textarea 
+                  v-model="code" 
+                  class="code-textarea"
+                  placeholder="在此输入你的代码..."
+                  spellcheck="false"
+                ></textarea>
+              </div>
             </div>
           </div>
 
-          <!-- 中间：可拖拽分隔条 -->
-          <div class="splitter" @mousedown="startResize"></div>
-
-          <!-- 右侧：代码编辑器 -->
-          <div class="editor-panel" :style="{ flex: `0 0 ${100 - splitRatio}%` }">
-            <div class="panel-header">
-              <span class="panel-title">代码编辑器</span>
+          <div class="console-panel" :style="{ height: consoleHeight + 'px' }">
+            <div class="console-resizer" @mousedown="startConsoleResize"></div>
+            <div class="console-toolbar">
+              <div class="toolbar-left">
+                <span class="console-title">控制台</span>
+                <span v-if="output" class="status-badge" :class="output.status">
+                  {{ output.status === 'running' ? '运行中' : output.status === 'success' ? '通过' : '未通过' }}
+                </span>
+              </div>
+              <div class="toolbar-right">
+                <el-button type="primary" size="small" @click="runCode" :loading="running">
+                  <el-icon><VideoPlay /></el-icon> 运行
+                </el-button>
+                <el-button type="success" size="small" @click="submitCode" :loading="submitting">
+                  <el-icon><Check /></el-icon> 提交
+                </el-button>
+                <el-button size="small" @click="clearOutput" v-if="output">清空</el-button>
+              </div>
             </div>
-            <div class="editor-content">
-              <textarea 
-                v-model="code" 
-                class="code-textarea"
-                placeholder="在此输入你的代码..."
-                spellcheck="false"
-              ></textarea>
+            
+            <div class="console-body">
+              <div v-if="output && output.status === 'running'" class="console-output running">
+                <div class="loading-indicator">
+                  <el-icon class="is-loading"><Loading /></el-icon>
+                  <span>正在执行代码...</span>
+                </div>
+              </div>
+              
+              <div v-else-if="output" class="console-output" :class="output.status">
+                <div class="output-header">
+                  <span class="output-label">━━ 运行结果 ━━</span>
+                </div>
+                <pre class="output-content">{{ output.message }}</pre>
+              </div>
+              
+              <div v-else class="console-placeholder">
+                <el-icon><Monitor /></el-icon>
+                <p>点击"运行"按钮执行代码</p>
+                <p class="hint">代码输出将显示在这里</p>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- 底部：控制台面板 -->
-        <div class="console-panel" :style="{ height: consoleHeight + 'px' }">
-          <div class="console-resizer" @mousedown="startConsoleResize"></div>
-          <div class="console-toolbar">
-            <div class="toolbar-left">
-              <span class="console-title">控制台</span>
-              <span v-if="output" class="status-badge" :class="output.status">
-                {{ output.status === 'running' ? '运行中' : output.status === 'success' ? '通过' : '未通过' }}
-              </span>
+        <aside class="ai-panel" v-if="aiPanelVisible">
+          <div class="ai-header">
+            <el-icon class="ai-icon"><MagicStick /></el-icon>
+            <span class="ai-title">AI 助手</span>
+            <el-button size="small" :icon="'Close'" @click="toggleAiPanel" circle />
+          </div>
+          
+          <div class="ai-actions">
+            <el-button @click="askAiHint" :loading="aiLoading" :disabled="aiLoading">
+              <el-icon><MagicStick /></el-icon> 获取提示
+            </el-button>
+            <el-button @click="askAiExplain" :loading="aiLoading" :disabled="aiLoading">
+              <el-icon><Document /></el-icon> 代码解释
+            </el-button>
+            <el-button @click="askAiDebug" :loading="aiLoading" :disabled="aiLoading">
+              <el-icon><Monitor /></el-icon> 代码调试
+            </el-button>
+          </div>
+          
+          <div class="ai-messages" ref="aiMessageContainer">
+            <div 
+              v-for="(msg, index) in aiMessages" 
+              :key="index" 
+              class="message" 
+              :class="msg.role"
+            >
+              <div class="message-bubble" v-html="renderAiMarkdown(msg.content)"></div>
             </div>
-            <div class="toolbar-right">
-              <el-button type="primary" size="small" @click="runCode" :loading="running">
-                <el-icon><VideoPlay /></el-icon> 运行
-              </el-button>
-              <el-button type="success" size="small" @click="submitCode" :loading="submitting">
-                <el-icon><Check /></el-icon> 提交
-              </el-button>
-              <el-button size="small" @click="clearOutput" v-if="output">清空</el-button>
+            <div v-if="aiLoading" class="message assistant loading-message">
+              <div class="message-bubble">
+                <el-icon class="is-loading"><Loading /></el-icon>
+                <span>AI 正在思考...</span>
+              </div>
             </div>
           </div>
           
-          <div class="console-body">
-            <!-- 运行中状态 -->
-            <div v-if="output && output.status === 'running'" class="console-output running">
-              <div class="loading-indicator">
-                <el-icon class="is-loading"><Loading /></el-icon>
-                <span>正在执行代码...</span>
-              </div>
-            </div>
-            
-            <!-- 有输出结果 -->
-            <div v-else-if="output" class="console-output" :class="output.status">
-              <div class="output-header">
-                <span class="output-label">━━ 运行结果 ━━</span>
-              </div>
-              <pre class="output-content">{{ output.message }}</pre>
-            </div>
-            
-            <!-- 空状态 -->
-            <div v-else class="console-placeholder">
-              <el-icon><Monitor /></el-icon>
-              <p>点击"运行"按钮执行代码</p>
-              <p class="hint">代码输出将显示在这里</p>
-            </div>
+          <div class="ai-footer">
+            <el-input
+              v-model="aiInput"
+              placeholder="输入你的问题..."
+              @keyup.enter="sendAiMessage"
+              :disabled="aiLoading"
+            >
+              <template #append>
+                <el-button @click="sendAiMessage" :disabled="aiLoading || !aiInput.trim()">
+                  <el-icon><Message /></el-icon>
+                </el-button>
+              </template>
+            </el-input>
           </div>
-        </div>
+        </aside>
       </main>
 
-      <!-- 空状态 -->
       <div class="empty-state" v-else>
         <el-empty description="请选择一道题目开始练习" />
       </div>
@@ -139,16 +189,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Document, VideoPlay, Check, Loading, Monitor } from '@element-plus/icons-vue'
+import { VideoPlay, Check, Loading, Monitor, MagicStick, Document, Message } from '@element-plus/icons-vue'
 import { problemApi, submissionApi } from '@/api/problem'
 import { marked } from 'marked'
-import type { Problem } from '@/types'
 
 const loading = ref(false)
-const problems = ref<Problem[]>([])
-const selectedProblem = ref<Problem | null>(null)
+const problems = ref<any[]>([])
+const selectedProblem = ref<any | null>(null)
 const difficultyFilter = ref('')
 const language = ref('python')
 const code = ref('')
@@ -156,10 +205,14 @@ const running = ref(false)
 const submitting = ref(false)
 const output = ref<{ status: string; message: string } | null>(null)
 const sidebarCollapsed = ref(false)
-
-// 分隔条位置
-const splitRatio = ref(50) // 左侧占百分比
+const splitRatio = ref(50)
 const consoleHeight = ref(280)
+
+const aiPanelVisible = ref(false)
+const aiLoading = ref(false)
+const aiInput = ref('')
+const aiMessages = ref<{ role: 'user' | 'assistant'; content: string }[]>([])
+const aiMessageContainer = ref<HTMLElement | null>(null)
 
 const filteredProblems = computed(() => {
   if (!difficultyFilter.value) return problems.value
@@ -172,24 +225,15 @@ const renderedDescription = computed(() => {
 })
 
 const getDifficultyText = (difficulty: string) => {
-  const texts: Record<string, string> = {
-    easy: '简单',
-    medium: '中等',
-    hard: '困难'
-  }
+  const texts: Record<string, string> = { easy: '简单', medium: '中等', hard: '困难' }
   return texts[difficulty] || difficulty
 }
 
 const getStatusText = (status: string) => {
   const statusTexts: Record<string, string> = {
-    accepted: '✓ 通过',
-    wrong_answer: '✗ 答案错误',
-    time_limit_exceeded: '✗ 超时',
-    memory_limit_exceeded: '✗ 内存超限',
-    runtime_error: '✗ 运行错误',
-    compile_error: '✗ 编译错误',
-    pending: '等待中',
-    running: '运行中'
+    accepted: '✓ 通过', wrong_answer: '✗ 答案错误', time_limit_exceeded: '✗ 超时',
+    memory_limit_exceeded: '✗ 内存超限', runtime_error: '✗ 运行错误',
+    compile_error: '✗ 编译错误', pending: '等待中', running: '运行中'
   }
   return statusTexts[status] || status
 }
@@ -206,12 +250,14 @@ const fetchProblems = async () => {
     if (problems.value.length > 0) {
       selectProblem(problems.value[0])
     }
+  } catch (error) {
+    console.error('获取题目失败:', error)
   } finally {
     loading.value = false
   }
 }
 
-const selectProblem = (problem: Problem) => {
+const selectProblem = (problem: any) => {
   selectedProblem.value = problem
   code.value = problem.template_code?.[language.value] || ''
   output.value = null
@@ -221,7 +267,6 @@ const clearOutput = () => {
   output.value = null
 }
 
-// 拖拽分隔条
 const startResize = (e: MouseEvent) => {
   e.preventDefault()
   const startX = e.clientX
@@ -245,7 +290,6 @@ const startResize = (e: MouseEvent) => {
   document.addEventListener('mouseup', onMouseUp)
 }
 
-// 拖拽控制台高度
 const startConsoleResize = (e: MouseEvent) => {
   e.preventDefault()
   const startY = e.clientY
@@ -280,7 +324,6 @@ const runCode = async () => {
     setTimeout(async () => {
       try {
         const result = await submissionApi.getSubmission(res.data.submissionId)
-        
         const testResults = result.data.test_results
         
         let message = `状态：${getStatusText(result.data.status)}\n`
@@ -292,7 +335,6 @@ const runCode = async () => {
         
         if (testResults && testResults.results && testResults.results.length > 0) {
           const testResult = testResults.results[0]
-          
           message += `【你的输出】\n${testResult.output || '(无输出)'}\n\n`
           
           if (testResult.expected) {
@@ -339,7 +381,6 @@ const submitCode = async () => {
     
     setTimeout(async () => {
       const result = await submissionApi.getSubmission(res.data.submissionId)
-      
       const testResults = result.data.test_results
       
       if (result.data.status === 'accepted') {
@@ -375,12 +416,136 @@ const submitCode = async () => {
   }
 }
 
+const toggleAiPanel = () => {
+  aiPanelVisible.value = !aiPanelVisible.value
+  if (aiPanelVisible.value && aiMessages.value.length === 0) {
+    aiMessages.value = [{
+      role: 'assistant',
+      content: `你好！我是AI编程助手。当前题目：${selectedProblem.value?.title || '未选择'}。我可以帮你：
+
+- 获取提示：点击"获取提示"按钮
+- 代码解释：点击"代码解释"按钮
+- 代码调试：点击"代码调试"按钮
+- 自由提问：在输入框输入你的问题
+
+有什么我可以帮你的吗？`
+    }]
+  }
+}
+
+const renderAiMarkdown = (content: string) => {
+  return marked(content)
+}
+
+const scrollToAiBottom = async () => {
+  await nextTick()
+  if (aiMessageContainer.value) {
+    aiMessageContainer.value.scrollTop = aiMessageContainer.value.scrollHeight
+  }
+}
+
+const addAiMessage = (role: 'user' | 'assistant', content: string) => {
+  aiMessages.value.push({ role, content })
+  scrollToAiBottom()
+}
+
+const callAi = async (message: string): Promise<string> => {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+  const token = localStorage.getItem('token')
+  
+  const res = await fetch(`${baseUrl}/api/ai/chat`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      message,
+      problemId: selectedProblem.value?.id,
+      code: code.value
+    })
+  })
+  
+  const data = await res.json()
+  return data.data?.reply || data.data?.content || '抱歉，AI服务暂时不可用'
+}
+
+const askAiHint = async () => {
+  if (!selectedProblem.value) {
+    ElMessage.warning('请先选择一道题目')
+    return
+  }
+  aiLoading.value = true
+  addAiMessage('user', '请给我一些解题提示')
+  
+  try {
+    const reply = await callAi(`请根据题目"${selectedProblem.value.title}"，题目描述：${selectedProblem.value.description}，给我一些解题思路和提示。`)
+    addAiMessage('assistant', reply)
+  } catch (error) {
+    ElMessage.error('AI助手调用失败')
+  } finally {
+    aiLoading.value = false
+  }
+}
+
+const askAiExplain = async () => {
+  if (!code.value.trim()) {
+    ElMessage.warning('请先在编辑器中输入代码')
+    return
+  }
+  aiLoading.value = true
+  addAiMessage('user', '请解释我当前的代码')
+  
+  try {
+    const reply = await callAi(`请解释以下代码的作用和逻辑：\n\n\`\`\`${language.value}\n${code.value}\n\`\`\``)
+    addAiMessage('assistant', reply)
+  } catch (error) {
+    ElMessage.error('AI助手调用失败')
+  } finally {
+    aiLoading.value = false
+  }
+}
+
+const askAiDebug = async () => {
+  if (!code.value.trim()) {
+    ElMessage.warning('请先在编辑器中输入代码')
+    return
+  }
+  aiLoading.value = true
+  addAiMessage('user', '请帮我调试当前代码')
+  
+  try {
+    const reply = await callAi(`请帮我审查并调试以下代码，指出可能存在的问题和改进建议：\n\n\`\`\`${language.value}\n${code.value}\n\`\`\``)
+    addAiMessage('assistant', reply)
+  } catch (error) {
+    ElMessage.error('AI助手调用失败')
+  } finally {
+    aiLoading.value = false
+  }
+}
+
+const sendAiMessage = async () => {
+  if (!aiInput.value.trim()) return
+  
+  const userMessage = aiInput.value
+  aiInput.value = ''
+  aiLoading.value = true
+  addAiMessage('user', userMessage)
+  
+  try {
+    const reply = await callAi(userMessage)
+    addAiMessage('assistant', reply)
+  } catch (error) {
+    ElMessage.error('AI助手调用失败')
+  } finally {
+    aiLoading.value = false
+  }
+}
+
 onMounted(fetchProblems)
 </script>
 
 <style scoped lang="scss">
-@use '@/styles/variables.scss' as *;
-
 .practice-page {
   height: calc(100vh - 60px);
   overflow: hidden;
@@ -392,7 +557,6 @@ onMounted(fetchProblems)
   height: 100%;
 }
 
-/* 左侧题目列表 */
 .problem-sidebar {
   width: 280px;
   min-width: 60px;
@@ -432,7 +596,7 @@ onMounted(fetchProblems)
     margin: 0;
     font-size: 14px;
     font-weight: 600;
-    color: $text-primary;
+    color: #1e293b;
     white-space: nowrap;
   }
   
@@ -463,7 +627,7 @@ onMounted(fetchProblems)
   
   &.active {
     background: #eef2ff;
-    border-left: 3px solid $primary-color;
+    border-left: 3px solid #4f46e5;
   }
 }
 
@@ -477,7 +641,7 @@ onMounted(fetchProblems)
 .problem-title {
   flex: 1;
   font-size: 13px;
-  color: $text-primary;
+  color: #1e293b;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -495,13 +659,30 @@ onMounted(fetchProblems)
   &.hard { background: #fee2e2; color: #991b1b; }
 }
 
-/* 右侧主内容 */
 .main-content {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-width: 0;
   background: white;
+  
+  &.with-ai-panel {
+    flex-direction: row;
+    
+    .practice-body {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+  }
+}
+
+.practice-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .problem-header {
@@ -516,7 +697,7 @@ onMounted(fetchProblems)
     margin: 0;
     font-size: 16px;
     font-weight: 600;
-    color: $text-primary;
+    color: #1e293b;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -533,7 +714,6 @@ onMounted(fetchProblems)
   gap: 10px;
 }
 
-/* 左右分栏布局 */
 .content-split {
   flex: 1;
   display: flex;
@@ -556,7 +736,7 @@ onMounted(fetchProblems)
     .panel-title {
       font-size: 13px;
       font-weight: 600;
-      color: $text-primary;
+      color: #1e293b;
     }
   }
   
@@ -574,7 +754,7 @@ onMounted(fetchProblems)
   position: relative;
   
   &:hover {
-    background: $primary-color;
+    background: #4f46e5;
   }
   
   &::after {
@@ -604,7 +784,7 @@ onMounted(fetchProblems)
     .panel-title {
       font-size: 13px;
       font-weight: 600;
-      color: $text-primary;
+      color: #1e293b;
     }
   }
   
@@ -614,11 +794,10 @@ onMounted(fetchProblems)
   }
 }
 
-/* 题目描述 */
 .problem-description {
   padding: 20px;
   line-height: 1.8;
-  color: $text-secondary;
+  color: #333;
   font-size: 14px;
   
   p {
@@ -627,10 +806,10 @@ onMounted(fetchProblems)
   
   :deep(h3) {
     font-size: 16px;
-    color: $text-primary;
+    color: #1e293b;
     margin: 20px 0 12px 0;
     font-weight: 600;
-    border-left: 3px solid $primary-color;
+    border-left: 3px solid #4f46e5;
     padding-left: 12px;
     line-height: 1.4;
     
@@ -640,7 +819,7 @@ onMounted(fetchProblems)
   }
   
   :deep(strong) {
-    color: $primary-color;
+    color: #4f46e5;
     font-weight: 600;
   }
   
@@ -703,7 +882,7 @@ onMounted(fetchProblems)
       margin-bottom: 8px;
       
       strong {
-        color: $text-primary;
+        color: #1e293b;
       }
     }
   }
@@ -712,13 +891,12 @@ onMounted(fetchProblems)
     margin: 8px 0;
     
     strong {
-      color: $text-primary;
+      color: #1e293b;
       font-size: 14px;
     }
   }
 }
 
-/* 代码编辑器 */
 .code-textarea {
   width: 100%;
   height: 100%;
@@ -738,7 +916,6 @@ onMounted(fetchProblems)
   }
 }
 
-/* 控制台面板 */
 .console-panel {
   border-top: 2px solid #e0e0e0;
   background: #252526;
@@ -759,7 +936,7 @@ onMounted(fetchProblems)
   z-index: 10;
   
   &:hover {
-    background: $primary-color;
+    background: #4f46e5;
   }
 }
 
@@ -902,5 +1079,211 @@ onMounted(fetchProblems)
   align-items: center;
   justify-content: center;
   background: white;
+}
+
+.ai-panel {
+  width: 380px;
+  background: white;
+  border-left: 1px solid #e0e0e0;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  box-shadow: -2px 0 8px rgba(0,0,0,0.05);
+  
+  .ai-header {
+    padding: 16px 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    
+    .ai-icon {
+      font-size: 20px;
+    }
+    
+    .ai-title {
+      flex: 1;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    
+    .el-button {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      
+      &:hover {
+        background: rgba(255,255,255,0.3);
+      }
+    }
+  }
+  
+  .ai-actions {
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-bottom: 1px solid #e0e0e0;
+    
+    .el-button {
+      width: 100%;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #f5f7ff;
+      border-color: #e0e5ff;
+      color: #4f46e5;
+      
+      &:hover {
+        background: #e8ecff;
+        border-color: #c7ccff;
+      }
+      
+      .el-icon {
+        font-size: 16px;
+      }
+    }
+  }
+  
+  .ai-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    background: #f8f9fa;
+    
+    .message {
+      margin-bottom: 12px;
+      display: flex;
+      
+      &.user {
+        justify-content: flex-end;
+        
+        .message-bubble {
+          background: #4f46e5;
+          color: white;
+          border-radius: 12px 12px 0 12px;
+          
+          :deep(pre) {
+            background: rgba(0,0,0,0.3);
+          }
+          
+          :deep(code) {
+            background: rgba(0,0,0,0.2);
+            color: #fff;
+          }
+        }
+      }
+      
+      &.assistant {
+        justify-content: flex-start;
+        
+        .message-bubble {
+          background: white;
+          color: #1e293b;
+          border: 1px solid #e0e0e0;
+          border-radius: 12px 12px 12px 0;
+        }
+      }
+      
+      &.loading-message {
+        .message-bubble {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: #888;
+          font-style: italic;
+        }
+      }
+      
+      .message-bubble {
+        max-width: 85%;
+        padding: 10px 14px;
+        font-size: 13px;
+        line-height: 1.6;
+        word-wrap: break-word;
+        
+        :deep(p) {
+          margin: 8px 0;
+          
+          &:first-child {
+            margin-top: 0;
+          }
+          
+          &:last-child {
+            margin-bottom: 0;
+          }
+        }
+        
+        :deep(pre) {
+          background: #1e1e1e;
+          color: #d4d4d4;
+          padding: 10px;
+          border-radius: 6px;
+          overflow-x: auto;
+          margin: 8px 0;
+          font-size: 12px;
+          line-height: 1.5;
+          
+          code {
+            background: none;
+            color: inherit;
+            padding: 0;
+          }
+        }
+        
+        :deep(code) {
+          background: #f0f7ff;
+          color: #e6a23c;
+          padding: 2px 4px;
+          border-radius: 3px;
+          font-size: 12px;
+          font-family: 'Consolas', 'Monaco', monospace;
+        }
+        
+        :deep(ul), :deep(ol) {
+          padding-left: 20px;
+          margin: 8px 0;
+          
+          li {
+            margin-bottom: 4px;
+          }
+        }
+        
+        :deep(strong) {
+          font-weight: 600;
+          color: #4f46e5;
+        }
+        
+        :deep(blockquote) {
+          border-left: 3px solid #4f46e5;
+          padding-left: 10px;
+          margin: 8px 0;
+          color: #666;
+        }
+      }
+    }
+  }
+  
+  .ai-footer {
+    padding: 12px 16px;
+    background: white;
+    border-top: 1px solid #e0e0e0;
+    
+    .el-input {
+      .el-button {
+        background: #4f46e5;
+        border-color: #4f46e5;
+        color: white;
+        
+        &:hover {
+          background: #4338ca;
+          border-color: #4338ca;
+        }
+      }
+    }
+  }
 }
 </style>

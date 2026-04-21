@@ -308,8 +308,8 @@ router.beforeEach(async (to, _from, next) => {
   }
   
   // 防止跨角色访问
-  // 教师访问学生端页面时，重定向到教师端（但允许访问考试、课程学习、社区页面）
-  if (to.path.startsWith('/') && !to.path.startsWith('/teacher') && !to.path.startsWith('/admin') && userRole === 'teacher' && !to.path.startsWith('/exams') && !to.path.startsWith('/courses') && !to.path.startsWith('/community')) {
+  // 教师访问学生端页面时，重定向到教师端（但允许访问考试、课程学习、社区、在线练习页面）
+  if (to.path.startsWith('/') && !to.path.startsWith('/teacher') && !to.path.startsWith('/admin') && userRole === 'teacher' && !to.path.startsWith('/exams') && !to.path.startsWith('/courses') && !to.path.startsWith('/community') && !to.path.startsWith('/practice')) {
     next('/teacher')
     return
   }

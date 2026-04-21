@@ -2,28 +2,23 @@ import request from './request'
 import type { ApiResponse } from './request'
 
 export const aiApi = {
-  chat(message: string, context?: string): Promise<ApiResponse<{ response: string }>> {
-    return request.post('/ai/chat', { message, context })
+  chat(params: { message: string; problemId?: number; code?: string; language?: string; output?: string }): Promise<ApiResponse<{ reply: string; response: string }>> {
+    return request.post('/ai/chat', params)
   },
 
-  explainCode(code: string, language: string): Promise<ApiResponse<{ explanation: string }>> {
-    return request.post('/ai/explain', { code, language })
+  explainCode(problemId: number, params: { code: string; language: string }): Promise<ApiResponse<{ explanation: string }>> {
+    return request.post('/ai/explain', { problem_id: problemId, ...params })
   },
 
-  debugCode(code: string, language: string, errorMessage?: string): Promise<ApiResponse<{ debug_info: string }>> {
-    return request.post('/ai/debug', { code, language, error_message: errorMessage })
+  debugCode(problemId: number, params: { code: string; language: string; output?: string }): Promise<ApiResponse<{ debug_info: string; debug: string }>> {
+    return request.post('/ai/debug', { problem_id: problemId, ...params, error_message: params.output })
   },
 
   optimizeCode(code: string, language: string): Promise<ApiResponse<{ optimization: string }>> {
     return request.post('/ai/optimize', { code, language })
   },
 
-  getHint(problemTitle: string, problemDescription: string, code: string, language: string): Promise<ApiResponse<{ hint: string }>> {
-    return request.post('/ai/hint', {
-      problem_title: problemTitle,
-      problem_description: problemDescription,
-      code,
-      language
-    })
+  getHint(problemId: number, params: { title: string; description: string; difficulty: string; code?: string; language?: string }): Promise<ApiResponse<{ hint: string }>> {
+    return request.post('/ai/hint', { problem_id: problemId, problem_title: params.title, problem_description: params.description, difficulty: params.difficulty, code: params.code, language: params.language })
   }
 }
