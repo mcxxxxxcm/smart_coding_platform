@@ -450,7 +450,7 @@ const addAiMessage = (role: 'user' | 'assistant', content: string) => {
 }
 
 const callAi = async (message: string): Promise<string> => {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
   const token = localStorage.getItem('token')
   
   const res = await fetch(`${baseUrl}/api/ai/chat`, {

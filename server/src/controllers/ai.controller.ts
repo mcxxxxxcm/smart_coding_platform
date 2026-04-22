@@ -15,7 +15,7 @@ const GLM_API_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
 const GLM_MODEL = 'glm-4.6v';
 
 export class AIController {
-  private async callGLM(messages: Array<{ role: string; content: string }>): Promise<string> {
+  private callGLM = async (messages: Array<{ role: string; content: string }>): Promise<string> => {
     const response = await fetch(GLM_API_URL, {
       method: 'POST',
       headers: {
@@ -39,13 +39,29 @@ export class AIController {
     return data.choices[0]?.message?.content || '';
   }
 
-  async chat(req: AuthenticatedRequest, res: Response): Promise<void> {
+  chat = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-      const { message, context } = req.body;
+      const { message, context, problemId, code, language } = req.body;
 
       if (!message) {
         res.status(400).json({ success: false, message: '消息内容不能为空' } as ApiResponse);
         return;
+      }
+
+      // 构建包含上下文的消息
+      let fullMessage = message;
+      if (problemId) {
+        fullMessage = `[题目ID: ${problemId}]\n${fullMessage}`;
+      }
+      if (context) {
+        fullMessage = `[上下文信息]\n${context}\n\n[用户问题]\n${fullMessage}`;
+      }
+
+      // 添加代码信息
+      if (code && language) {
+        fullMessage += `\n\n\n[相关代码]\n\`\`\`${language}\n${code}\n\`\`\``;
+      } else if (code) {
+        fullMessage += `\n\n\n[相关代码]\n\`\`\`\n${code}\n\`\`\``;
       }
 
       const systemPrompt = `你是一个专业的编程教学助手，名叫"智能编程助手"。你帮助学生理解编程概念、解答编程问题。
@@ -58,14 +74,14 @@ export class AIController {
 
       const messages = [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: context ? `[上下文信息]\n${context}\n\n[用户问题]\n${message}` : message }
+        { role: 'user', content: fullMessage }
       ];
 
       const response = await this.callGLM(messages);
 
       res.json({
         success: true,
-        data: { response }
+        data: { response, reply: response, content: response }
       } as ApiResponse);
     } catch (error) {
       console.error('AI 对话错误:', error);
@@ -76,7 +92,7 @@ export class AIController {
     }
   }
 
-  async explainCode(req: AuthenticatedRequest, res: Response): Promise<void> {
+  explainCode = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const { code, language } = req.body;
 
@@ -112,7 +128,7 @@ export class AIController {
     }
   }
 
-  async debugCode(req: AuthenticatedRequest, res: Response): Promise<void> {
+  debugCode = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const { code, language, error_message } = req.body;
 
@@ -154,7 +170,7 @@ export class AIController {
     }
   }
 
-  async optimizeCode(req: AuthenticatedRequest, res: Response): Promise<void> {
+  optimizeCode = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const { code, language } = req.body;
 
@@ -191,7 +207,7 @@ export class AIController {
     }
   }
 
-  async getHint(req: AuthenticatedRequest, res: Response): Promise<void> {
+  getHint = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const { problem_title, problem_description, code, language } = req.body;
 
