@@ -40,13 +40,13 @@
             <span class="difficulty-tag" :class="selectedProblem.difficulty">{{ getDifficultyText(selectedProblem.difficulty) }}</span>
           </h2>
           <div class="header-actions">
-            <el-button 
-              size="small" 
-              type="primary" 
+            <el-button
+              size="small"
+              type="primary"
               :icon="MagicStick"
               @click="toggleAiPanel"
             >
-              AI 助手
+              {{ aiPanelVisible ? '关闭AI助手' : 'AI助手' }}
             </el-button>
             <el-select v-model="language" size="small" style="width: 120px;">
               <el-option label="Python" value="python" />
@@ -128,7 +128,7 @@
           </div>
         </div>
 
-        <aside class="ai-panel" v-if="aiPanelVisible">
+        <aside class="ai-panel" :class="{ visible: aiPanelVisible }" :style="{ transform: aiPanelVisible ? 'translateX(0)' : 'translateX(100%)' }">
           <div class="ai-header">
             <el-icon class="ai-icon"><MagicStick /></el-icon>
             <span class="ai-title">AI 助手</span>
@@ -550,6 +550,7 @@ onMounted(fetchProblems)
   height: calc(100vh - 60px);
   overflow: hidden;
   background: #f5f5f5;
+  position: relative;
 }
 
 .practice-layout {
@@ -665,10 +666,9 @@ onMounted(fetchProblems)
   flex-direction: column;
   min-width: 0;
   background: white;
-  
+  position: relative;
+
   &.with-ai-panel {
-    flex-direction: row;
-    
     .practice-body {
       flex: 1;
       min-width: 0;
@@ -1089,6 +1089,22 @@ onMounted(fetchProblems)
   flex-direction: column;
   flex-shrink: 0;
   box-shadow: -2px 0 8px rgba(0,0,0,0.05);
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  height: 100%;
+  z-index: 100;
+
+  &.visible {
+    transform: translateX(0);
+  }
+
+  &:not(.visible) {
+    display: none;
+  }
   
   .ai-header {
     padding: 16px 20px;
