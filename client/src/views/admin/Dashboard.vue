@@ -219,7 +219,7 @@ const recentLogs = ref([
     display: flex;
     justify-content: space-between;
     padding: 12px 0;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid $border-light;
     
     &:last-child {
       border-bottom: none;

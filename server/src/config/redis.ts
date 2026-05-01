@@ -55,7 +55,7 @@ export async function setCache(key: string, value: unknown, ttl: number = 3600):
   try {
     await redisClient.setEx(key, ttl, JSON.stringify(value));
   } catch (error) {
-    console.log('Redis 缓存设置失败，跳过缓存:', error);
+    console.error('Redis 缓存设置失败:', error);
   }
 }
 
@@ -66,8 +66,26 @@ export async function deleteCache(key: string): Promise<void> {
   try {
     await redisClient.del(key);
   } catch (error) {
-    console.log('Redis 缓存删除失败:', error);
+    console.error('Redis 缓存删除失败:', error);
   }
+}
+
+export async function deleteCacheByPattern(pattern: string): Promise<void> {
+  if (!redisClient || !isConnected) {
+    return;
+  }
+  try {
+    const keys = await redisClient.keys(pattern);
+    if (keys.length > 0) {
+      await redisClient.del(keys);
+    }
+  } catch (error) {
+    console.error('Redis 通配符缓存删除失败:', error);
+  }
+}
+
+export function isRedisConnected(): boolean {
+  return isConnected;
 }
 
 export default redisClient;

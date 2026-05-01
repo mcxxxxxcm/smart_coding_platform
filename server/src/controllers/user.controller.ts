@@ -1,592 +1,77 @@
-import { Response } from 'express';
-import bcrypt from 'bcryptjs';
-import pool from '../config/database';
-import { AuthenticatedRequest, ApiResponse } from '../types/express';
-import { AppError } from '../middleware/error.middleware';
+import { Request, Response, NextFunction } from 'express';
+import { userService } from '../services/user.service';
 
 export class UserController {
-  async getProfile(req: AuthenticatedRequest, res: Response): Promise<void> {
-    try {
-      const userId = req.user!.id;
-      
-      const [rows] = await pool.execute(
-        `SELECT id, username, email, avatar, role, level, experience, points, bio, created_at, updated_at
-         FROM users WHERE id = ?`,
-        [userId]
-      );
-      
-      const users = rows as Record<string, unknown>[];
-      
-      if (users.length === 0) {
-        throw new AppError('用户不存在', 404);
-      }
-      
-      const [enrollments] = await pool.execute(
-        `SELECT COUNT(*) as count FROM user_enrollments WHERE user_id = ?`,
-        [userId]
-      );
-      
-      const [submissions] = await pool.execute(
-        `SELECT COUNT(*) as total, SUM(CASE WHEN status = 'accepted' THEN 1 ELSE 0 END) as accepted
-         FROM submissions WHERE user_id = ?`,
-        [userId]
-      );
-      
-      const enrollmentData = enrollments as { count: number }[];
-      const submissionData = submissions as { total: number; accepted: number }[];
-      
-      res.json({
-        success: true,
-        data: {
-          ...users[0],
-          stats: {
-            enrolledCourses: enrollmentData[0]?.count || 0,
-            totalSubmissions: submissionData[0]?.total || 0,
-            acceptedSubmissions: submissionData[0]?.accepted || 0
-          }
-        }
-      } as ApiResponse);
-    } catch (error) {
-      if (error instanceof AppError) {
-        res.status(error.statusCode).json({
-          success: false,
-          message: error.message
-        } as ApiResponse);
-        return;
-      }
-      throw error;
-    }
+  async getProfile(req: Request, res: Response, _next: NextFunction): Promise<void> {
+    const userId = (req as any).user.id;
+    const user = await userService.getProfile(userId);
+    res.json({ success: true, data: user });
   }
 
-  async updateProfile(req: AuthenticatedRequest, res: Response): Promise<void> {
-    try {
-      const userId = req.user!.id;
-      const { username, bio, avatar } = req.body;
-      
-      const updates: string[] = [];
-      const values: (string | number | null)[] = [];
-      
-      if (username) {
-        const [existingUsers] = await pool.execute(
-          'SELECT id FROM users WHERE username = ? AND id != ?',
-          [username, userId]
-        );
-        
-        if ((existingUsers as unknown[]).length > 0) {
-          throw new AppError('用户名已被使用', 400);
-        }
-        updates.push('username = ?');
-        values.push(username);
-      }
-      
-      if (bio !== undefined) {
-        updates.push('bio = ?');
-        values.push(bio || null);
-      }
-      
-      if (avatar !== undefined) {
-        updates.push('avatar = ?');
-        values.push(avatar || null);
-      }
-      
-      if (updates.length === 0) {
-        throw new AppError('没有提供要更新的内容', 400);
-      }
-      
-      updates.push('updated_at = NOW()');
-      values.push(userId);
-      
-      await pool.execute(
-        `UPDATE users SET ${updates.join(', ')} WHERE id = ?`,
-        values
-      );
-      
-      const [rows] = await pool.execute(
-        `SELECT id, username, email, avatar, role, level, experience, points, bio FROM users WHERE id = ?`,
-        [userId]
-      );
-      
-      res.json({
-        success: true,
-        message: '个人资料更新成功',
-        data: (rows as unknown[])[0]
-      } as ApiResponse);
-    } catch (error) {
-      if (error instanceof AppError) {
-        res.status(error.statusCode).json({
-          success: false,
-          message: error.message
-        } as ApiResponse);
-        return;
-      }
-      throw error;
-    }
+  async updateProfile(req: Request, res: Response, _next: NextFunction): Promise<void> {
+    const userId = (req as any).user.id;
+    const { username, bio, avatar } = req.body;
+    const user = await userService.updateProfile(userId, { username, bio, avatar });
+    res.json({ success: true, message: '个人信息更新成功', data: user });
   }
 
-  async changePassword(req: AuthenticatedRequest, res: Response): Promise<void> {
-    try {
-      const userId = req.user!.id;
-      const { currentPassword, newPassword } = req.body;
-      
-      const [rows] = await pool.execute(
-        'SELECT password FROM users WHERE id = ?',
-        [userId]
-      );
-      
-      const users = rows as { password: string }[];
-      
-      if (users.length === 0) {
-        throw new AppError('用户不存在', 404);
-      }
-      
-      const isPasswordValid = await bcrypt.compare(currentPassword, users[0].password);
-      
-      if (!isPasswordValid) {
-        throw new AppError('当前密码错误', 400);
-      }
-      
-      const hashedPassword = await bcrypt.hash(newPassword, 12);
-      
-      await pool.execute(
-        'UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?',
-        [hashedPassword, userId]
-      );
-      
-      res.json({
-        success: true,
-        message: '密码修改成功'
-      } as ApiResponse);
-    } catch (error) {
-      if (error instanceof AppError) {
-        res.status(error.statusCode).json({
-          success: false,
-          message: error.message
-        } as ApiResponse);
-        return;
-      }
-      throw error;
-    }
+  async changePassword(req: Request, res: Response, _next: NextFunction): Promise<void> {
+    const userId = (req as any).user.id;
+    const { oldPassword, newPassword } = req.body;
+    await userService.changePassword(userId, oldPassword, newPassword);
+    res.json({ success: true, message: '密码修改成功' });
   }
 
-  async getProgress(req: AuthenticatedRequest, res: Response): Promise<void> {
-    try {
-      const userId = req.user!.id;
-      
-      const [courseProgress] = await pool.execute(
-        `SELECT 
-          ue.course_id,
-          c.title as course_title,
-          ue.progress,
-          ue.completed,
-          ue.enrolled_at
-         FROM user_enrollments ue
-         JOIN courses c ON ue.course_id = c.id
-         WHERE ue.user_id = ?
-         ORDER BY ue.enrolled_at DESC`,
-        [userId]
-      );
-      
-      const [problemStats] = await pool.execute(
-        `SELECT 
-          p.difficulty,
-          COUNT(DISTINCT s.problem_id) as attempted,
-          SUM(CASE WHEN s.status = 'accepted' THEN 1 ELSE 0 END) as solved
-         FROM submissions s
-         JOIN problems p ON s.problem_id = p.id
-         WHERE s.user_id = ?
-         GROUP BY p.difficulty`,
-        [userId]
-      );
-      
-      res.json({
-        success: true,
-        data: {
-          courses: courseProgress,
-          problems: problemStats
-        }
-      } as ApiResponse);
-    } catch {
-      res.status(500).json({
-        success: false,
-        message: '获取学习进度失败'
-      } as ApiResponse);
-    }
+  async getProgress(req: Request, res: Response, _next: NextFunction): Promise<void> {
+    const userId = (req as any).user.id;
+    const progress = await userService.getProgress(userId);
+    res.json({ success: true, data: progress });
   }
 
-  async getSubmissions(req: AuthenticatedRequest, res: Response): Promise<void> {
-    try {
-      const userId = req.user!.id;
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 20;
-      const offset = (page - 1) * limit;
-      
-      const [rows] = await pool.execute(
-        `SELECT 
-          s.id,
-          s.problem_id,
-          p.title as problem_title,
-          p.difficulty,
-          s.language,
-          s.status,
-          s.runtime,
-          s.memory,
-          s.submitted_at
-         FROM submissions s
-         JOIN problems p ON s.problem_id = p.id
-         WHERE s.user_id = ?
-         ORDER BY s.submitted_at DESC
-         LIMIT ? OFFSET ?`,
-        [userId, limit, offset]
-      );
-      
-      const [countRows] = await pool.execute(
-        'SELECT COUNT(*) as total FROM submissions WHERE user_id = ?',
-        [userId]
-      );
-      
-      const countData = countRows as { total: number }[];
-      
-      res.json({
-        success: true,
-        data: rows,
-        pagination: {
-          page,
-          limit,
-          total: countData[0].total,
-          totalPages: Math.ceil(countData[0].total / limit)
-        }
-      } as ApiResponse);
-    } catch {
-      res.status(500).json({
-        success: false,
-        message: '获取提交记录失败'
-      } as ApiResponse);
-    }
+  async getSubmissions(req: Request, res: Response, _next: NextFunction): Promise<void> {
+    const userId = (req as any).user.id;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const result = await userService.getSubmissions(userId, page, limit);
+    res.json({ success: true, data: result.data, pagination: { page, limit, total: result.total, totalPages: Math.ceil(result.total / limit) } });
   }
 
-  async getUserById(req: AuthenticatedRequest, res: Response): Promise<void> {
-    try {
-      const userId = req.params.id;
-      
-      const [rows] = await pool.execute(
-        `SELECT id, username, avatar, level, experience, points, bio, created_at
-         FROM users WHERE id = ?`,
-        [userId]
-      );
-      
-      const users = rows as Record<string, unknown>[];
-      
-      if (users.length === 0) {
-        throw new AppError('用户不存在', 404);
-      }
-      
-      res.json({
-        success: true,
-        data: users[0]
-      } as ApiResponse);
-    } catch (error) {
-      if (error instanceof AppError) {
-        res.status(error.statusCode).json({
-          success: false,
-          message: error.message
-        } as ApiResponse);
-        return;
-      }
-      throw error;
-    }
+  async getUserById(req: Request, res: Response, _next: NextFunction): Promise<void> {
+    const id = parseInt(req.params.id);
+    const user = await userService.getUserById(id);
+    res.json({ success: true, data: user });
   }
 
-  async getUsers(req: AuthenticatedRequest, res: Response): Promise<void> {
-    try {
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 20;
-      const offset = (page - 1) * limit;
-      const role = req.query.role as string;
-      const search = req.query.search as string;
-      const level = req.query.level as string;
-      
-      console.log('获取用户列表 - role:', role, 'search:', search, 'level:', level);
-      
-      let whereClause = 'WHERE 1=1';
-      const params: (string | number)[] = [];
-      
-      if (role) {
-        whereClause += ' AND role = ?';
-        params.push(role);
-      }
-      
-      if (search) {
-        whereClause += ' AND (username LIKE ? OR email LIKE ?)';
-        params.push(`%${search}%`, `%${search}%`);
-      }
-      
-      if (level) {
-        whereClause += ' AND level = ?';
-        params.push(parseInt(level));
-      }
-      
-      const [rows] = await pool.execute(
-        `SELECT id, username, email, avatar, role, level, experience, points, bio, created_at
-         FROM users
-         ${whereClause}
-         ORDER BY created_at DESC
-         LIMIT ${limit} OFFSET ${offset}`,
-        params
-      );
-      
-      const [countRows] = await pool.execute(
-        `SELECT COUNT(*) as total FROM users ${whereClause}`,
-        params
-      );
-      
-      const countData = countRows as { total: number }[];
-      
-      console.log('用户列表结果:', (rows as any[]).length, '条');
-      
-      res.json({
-        success: true,
-        data: rows,
-        pagination: {
-          page,
-          limit,
-          total: countData[0].total,
-          totalPages: Math.ceil(countData[0].total / limit)
-        }
-      } as ApiResponse);
-    } catch (error) {
-      console.error('获取用户列表错误:', error);
-      res.status(500).json({
-        success: false,
-        message: '获取用户列表失败'
-      } as ApiResponse);
-    }
+  async getTeacherStats(req: Request, res: Response, _next: NextFunction): Promise<void> {
+    const teacherId = (req as any).user.id;
+    const stats = await userService.getTeacherStats(teacherId);
+    res.json({ success: true, data: stats });
   }
 
-  async getTeacherStats(req: AuthenticatedRequest, res: Response): Promise<void> {
-    try {
-      const teacherId = req.user!.id;
-      
-      console.log('获取教师统计数据 - teacherId:', teacherId);
-      
-      // 1. 获取教师所有已发布课程的ID
-      const [courseRows] = await pool.execute(
-        `SELECT id FROM courses WHERE teacher_id = ? AND status = 'published'`,
-        [teacherId]
-      );
-      const courseIds = (courseRows as any[]).map(r => r.id);
-      const activeCourses = courseIds.length;
-      
-      // 2. 获取所有选课学生总数
-      let studentCount = 0;
-      if (courseIds.length > 0) {
-        const placeholders = courseIds.map(() => '?').join(',');
-        const [studentResult] = await pool.execute(
-          `SELECT COUNT(DISTINCT user_id) as count
-           FROM user_enrollments
-           WHERE course_id IN (${placeholders})`,
-          [...courseIds]
-        );
-        studentCount = (studentResult as any[])[0]?.count || 0;
-      }
-      
-      // 3. 获取所有选课学生的总提交数（所有题目，不限于教师创建的）
-      let totalSubmissions = 0;
-      if (studentCount > 0 && courseIds.length > 0) {
-        const coursePlaceholders = courseIds.map(() => '?').join(',');
-        const [subResult] = await pool.execute(
-          `SELECT COUNT(*) as count
-           FROM submissions s
-           WHERE s.user_id IN (
-             SELECT DISTINCT user_id FROM user_enrollments WHERE course_id IN (${coursePlaceholders})
-           )`,
-          [...courseIds]
-        );
-        totalSubmissions = (subResult as any[])[0]?.count || 0;
-      }
-      
-      // 4. 获取所有选课学生的通过数
-      let acceptedSubmissions = 0;
-      if (studentCount > 0 && courseIds.length > 0) {
-        const coursePlaceholders = courseIds.map(() => '?').join(',');
-        const [acceptResult] = await pool.execute(
-          `SELECT COUNT(*) as count
-           FROM submissions s
-           WHERE s.user_id IN (
-             SELECT DISTINCT user_id FROM user_enrollments WHERE course_id IN (${coursePlaceholders})
-           ) AND s.status = 'accepted'`,
-          [...courseIds]
-        );
-        acceptedSubmissions = (acceptResult as any[])[0]?.count || 0;
-      }
-      
-      const passRate = totalSubmissions > 0 ? Math.round((acceptedSubmissions / totalSubmissions) * 100) : 0;
-      
-      console.log('统计数据:', { studentCount, totalSubmissions, acceptedSubmissions, passRate, activeCourses });
-      
-      res.json({
-        success: true,
-        data: {
-          totalStudents: studentCount,
-          totalSubmissions: totalSubmissions,
-          passRate: passRate,
-          activeCourses: activeCourses
-        }
-      } as ApiResponse);
-    } catch (error) {
-      console.error('获取统计数据错误:', error);
-      res.status(500).json({
-        success: false,
-        message: '获取统计数据失败'
-      } as ApiResponse);
-    }
+  async getEnrolledStudents(req: Request, res: Response, _next: NextFunction): Promise<void> {
+    const teacherId = (req as any).user.id;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const search = req.query.search as string;
+    const level = req.query.level as string;
+    const result = await userService.getEnrolledStudents(teacherId, { page, limit, search, level });
+    res.json({ success: true, data: result.data, pagination: { page, limit, total: result.total, totalPages: Math.ceil(result.total / limit) } });
   }
 
-  async getEnrolledStudents(req: AuthenticatedRequest, res: Response): Promise<void> {
-    try {
-      const teacherId = req.user!.id;
-      const page = Math.max(parseInt(req.query.page as string) || 1, 1);
-      const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 20, 1), 100);
-      const offset = (page - 1) * limit;
-      const search = (req.query.search as string || '').trim();
-      const level = req.query.level as string;
-
-      // First get the teacher's course IDs separately
-      const [courseRows] = await pool.execute(
-        `SELECT id FROM courses WHERE teacher_id = ? AND status = 'published'`,
-        [teacherId]
-      );
-      const courseIds = (courseRows as any[]).map((r: any) => r.id);
-
-      // Build the my_enrolled_courses CASE clause based on whether teacher has courses
-      let myEnrolledClause: string;
-      if (courseIds.length > 0) {
-        const courseList = courseIds.map((id: number) => String(id)).join(',');
-        myEnrolledClause = `COUNT(DISTINCT CASE WHEN ue_my.course_id IN (${courseList}) THEN ue_my.course_id END) as my_enrolled_courses`;
-      } else {
-        myEnrolledClause = `0 as my_enrolled_courses`;
-      }
-
-      // Build where clause for search/level filters
-      const filterParts: string[] = [];
-      const queryParams: any[] = [];
-
-      if (search) {
-        filterParts.push('(u.username LIKE ? OR u.email LIKE ?)');
-        queryParams.push(`%${search}%`, `%${search}%`);
-      }
-
-      if (level) {
-        filterParts.push('u.level = ?');
-        queryParams.push(parseInt(level));
-      }
-
-      const whereStr = filterParts.length > 0 ? 'AND ' + filterParts.join(' AND ') : '';
-
-      const studentQuery = `
-        SELECT 
-          u.id, u.username, u.email, u.avatar, u.level, u.experience, u.points, u.bio, u.created_at,
-          COUNT(DISTINCT ue_all.course_id) as total_enrolled_courses,
-          ${myEnrolledClause},
-          COUNT(DISTINCT s.id) as total_submissions,
-          SUM(CASE WHEN s.status = 'accepted' THEN 1 ELSE 0 END) as accepted_submissions
-        FROM users u
-        LEFT JOIN user_enrollments ue_all ON u.id = ue_all.user_id
-        LEFT JOIN user_enrollments ue_my ON u.id = ue_my.user_id
-        LEFT JOIN submissions s ON u.id = s.user_id
-        WHERE u.role = 'student'
-        ${whereStr}
-        GROUP BY u.id, u.username, u.email, u.avatar, u.level, u.experience, u.points, u.bio, u.created_at
-        ORDER BY u.created_at DESC
-        LIMIT ${limit} OFFSET ${offset}
-      `;
-
-      console.log('Executing student query with params:', queryParams);
-
-      const [rows] = queryParams.length > 0
-        ? await pool.execute(studentQuery, queryParams)
-        : await pool.query(studentQuery);
-
-      const countQuery = `
-        SELECT COUNT(DISTINCT u.id) as total
-        FROM users u
-        WHERE u.role = 'student'
-        ${whereStr ? 'AND ' + filterParts.join(' AND ') : ''}
-      `;
-
-      const [countRows] = await pool.execute(countQuery, queryParams);
-      const total = (countRows as any[])[0]?.total || 0;
-
-      res.json({
-        success: true,
-        data: rows,
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages: Math.ceil(total / limit)
-        }
-      } as ApiResponse);
-    } catch (error) {
-      console.error('获取学生列表错误:', error);
-      res.status(500).json({
-        success: false,
-        message: '获取学生列表失败'
-      } as ApiResponse);
-    }
+  async getTopStudents(req: Request, res: Response, _next: NextFunction): Promise<void> {
+    const teacherId = (req as any).user.id;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const students = await userService.getTopStudents(teacherId, limit);
+    res.json({ success: true, data: students });
   }
 
-  async getTopStudents(req: AuthenticatedRequest, res: Response): Promise<void> {
-    try {
-      const teacherId = req.user!.id;
-      const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 10, 1), 100);
-
-      // Get the teacher's course IDs separately to avoid subquery parameter issues
-      const [courseRows] = await pool.execute(
-        `SELECT id FROM courses WHERE teacher_id = ? AND status = 'published'`,
-        [teacherId]
-      );
-      const courseIds = (courseRows as any[]).map((r: any) => r.id);
-
-      let whereClause = 'WHERE u.role = "student"';
-      if (courseIds.length > 0) {
-        const courseList = courseIds.map((id: number) => String(id)).join(',');
-        whereClause += ` AND u.id IN (
-          SELECT DISTINCT user_id FROM user_enrollments WHERE course_id IN (${courseList})
-        )`;
-      }
-
-      const query = `SELECT 
-          u.id, u.username, u.email, u.level,
-          COUNT(DISTINCT s.id) as submission_count,
-          SUM(CASE WHEN s.status = 'accepted' THEN 1 ELSE 0 END) as accepted_count
-         FROM users u
-         LEFT JOIN submissions s ON u.id = s.user_id
-         ${whereClause}
-         GROUP BY u.id, u.username, u.email, u.level
-         HAVING submission_count > 0
-         ORDER BY submission_count DESC
-         LIMIT ${limit}`;
-
-      const [rows] = await pool.query(query);
-
-      // 计算通过率
-      const result = (rows as any[]).map((row: any) => ({
-        ...row,
-        acceptance_rate: row.submission_count > 0 
-          ? Math.round((row.accepted_count / row.submission_count) * 100) 
-          : 0
-      }));
-
-      res.json({
-        success: true,
-        data: result
-      } as ApiResponse);
-    } catch (error) {
-      console.error('获取学生排行错误:', error);
-      res.status(500).json({
-        success: false,
-        message: '获取学生排行失败'
-      } as ApiResponse);
-    }
+  async getUsers(req: Request, res: Response, _next: NextFunction): Promise<void> {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const role = req.query.role as string;
+    const search = req.query.search as string;
+    const level = req.query.level as string;
+    const result = await userService.listUsers({ page, limit, role, search, level });
+    res.json({ success: true, data: result.data, pagination: { page, limit, total: result.total, totalPages: Math.ceil(result.total / limit) } });
   }
 }

@@ -108,39 +108,78 @@ const handleLogin = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: $bg-color;
+  position: relative;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+      radial-gradient(ellipse at 20% 50%, rgba(15, 118, 110, 0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, rgba(5, 150, 105, 0.04) 0%, transparent 50%);
+    pointer-events: none;
+  }
 }
 
 .login-container {
   display: flex;
-  width: 900px;
-  min-height: 500px;
+  width: 920px;
+  min-height: 520px;
   background: white;
   border-radius: $radius-lg;
-  box-shadow: $shadow-lg;
+  border: 1px solid $border-color;
+  box-shadow: $shadow-xl;
   overflow: hidden;
+  position: relative;
+  z-index: 1;
 }
 
 .login-left {
   flex: 1;
-  background: linear-gradient(135deg, $primary-color, #7c3aed);
+  background: $primary-color;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px;
+  padding: 48px;
+  position: relative;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 120px;
+    height: 120px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 50%;
+    transform: translate(30%, 30%);
+  }
 }
 
 .login-brand {
   text-align: center;
   color: white;
+  position: relative;
+  z-index: 1;
+  
+  .el-icon {
+    opacity: 0.9;
+  }
   
   h1 {
-    font-size: 1.8rem;
+    font-size: 1.75rem;
     margin: 20px 0 10px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
   }
   
   p {
-    opacity: 0.8;
+    opacity: 0.75;
+    font-size: 0.95rem;
   }
 }
 
@@ -149,7 +188,8 @@ const handleLogin = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px;
+  padding: 48px;
+  background: white;
 }
 
 .login-form-container {
@@ -157,28 +197,35 @@ const handleLogin = async () => {
   max-width: 320px;
   
   h2 {
-    font-size: 1.8rem;
-    margin-bottom: 30px;
+    font-size: 1.75rem;
+    margin-bottom: 32px;
     text-align: center;
     color: $text-primary;
+    font-weight: 700;
+    letter-spacing: -0.02em;
   }
 }
 
 .login-btn {
   width: 100%;
+  height: 44px;
+  font-weight: 600;
+  font-size: 0.95rem;
 }
 
 .login-footer {
   text-align: center;
-  margin-top: 20px;
+  margin-top: 24px;
   color: $text-secondary;
+  font-size: 0.9rem;
   
   a {
     color: $primary-color;
     margin-left: 5px;
+    font-weight: 500;
     
     &:hover {
-      text-decoration: underline;
+      color: $primary-hover;
     }
   }
 }

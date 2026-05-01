@@ -502,27 +502,26 @@ onMounted(loadExam)
           
           // Markdown 引用块
           :deep(blockquote) {
-            background: linear-gradient(135deg, #fff9e6 0%, #fff3cd 100%);
-            border-left: 4px solid #ffc107;
+            background: #fffbeb;
+            border-left: 4px solid #d97706;
             padding: 12px 16px;
             margin: 16px 0;
             border-radius: 0 8px 8px 0;
-            color: #856404;
+            color: #78350f;
             
             p {
               margin-bottom: 0;
             }
             
             strong {
-              color: #856404;
+              color: #78350f;
             }
           }
           
-          // Markdown 分割线
           :deep(hr) {
             border: none;
-            height: 2px;
-            background: linear-gradient(to right, transparent, #e4e7ed, transparent);
+            height: 1px;
+            background: #e2e8f0;
             margin: 20px 0;
           }
           

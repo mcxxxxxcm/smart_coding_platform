@@ -1,4 +1,4 @@
-@use './variables.scss';
+@use './variables.scss' as *;
 
 * {
   margin: 0;
@@ -10,9 +10,11 @@ html, body {
   width: 100%;
   min-height: 100vh;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  background-color: variables.$bg-color;
-  color: variables.$text-primary;
+  background-color: $bg-color;
+  color: $text-primary;
   line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 a {
@@ -42,21 +44,20 @@ input, textarea {
 }
 
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 4px;
+  background: #cbd5e1;
+  border-radius: 3px;
   
   &:hover {
-    background: #a8a8a8;
+    background: #94a3b8;
   }
 }
 
@@ -72,20 +73,18 @@ input, textarea {
 }
 
 .gradient-text {
-  background: linear-gradient(135deg, variables.$primary-color, #7c3aed);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: $primary-color;
 }
 
 .card {
   background: white;
-  border-radius: variables.$radius-lg;
-  box-shadow: variables.$shadow-md;
-  transition: all 0.3s ease;
+  border-radius: $radius-lg;
+  border: 1px solid $border-color;
+  transition: all 0.2s ease;
   
   &:hover {
-    box-shadow: variables.$shadow-lg;
+    border-color: $primary-border;
+    box-shadow: $shadow-md;
   }
 }
 
@@ -97,11 +96,11 @@ input, textarea {
     font-size: 2rem;
     font-weight: 700;
     margin-bottom: 10px;
-    color: variables.$text-primary;
+    color: $text-primary;
   }
   
   p {
-    color: variables.$text-secondary;
+    color: $text-secondary;
     font-size: 1.1rem;
   }
 }
@@ -113,18 +112,18 @@ input, textarea {
   font-weight: 500;
   
   &.easy {
-    background: #dcfce7;
-    color: #166534;
+    background: $color-easy-bg;
+    color: $color-easy-text;
   }
   
   &.medium {
-    background: #fef3c7;
-    color: #92400e;
+    background: $color-medium-bg;
+    color: $color-medium-text;
   }
   
   &.hard {
-    background: #fee2e2;
-    color: #991b1b;
+    background: $color-hard-bg;
+    color: $color-hard-text;
   }
 }
 

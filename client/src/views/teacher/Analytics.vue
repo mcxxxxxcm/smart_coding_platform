@@ -240,10 +240,10 @@ onMounted(() => {
       margin-right: 16px;
       color: white;
       
-      &.students { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-      &.submissions { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
-      &.pass-rate { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
-      &.courses { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+      &.students { background: #0f766e; }
+      &.submissions { background: #dc2626; }
+      &.pass-rate { background: #0891b2; }
+      &.courses { background: #059669; }
     }
     
     .stat-info {

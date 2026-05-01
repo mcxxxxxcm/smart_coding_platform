@@ -113,7 +113,7 @@ const templates = {
     font-family: Arial, sans-serif;
     text-align: center;
     padding: 50px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #0f766e;
     min-height: 100vh;
     margin: 0;
 }
@@ -135,7 +135,7 @@ button {
     border: none;
     border-radius: 25px;
     background: white;
-    color: #667eea;
+    color: #0f766e;
     cursor: pointer;
     transition: transform 0.3s, box-shadow 0.3s;
 }
@@ -166,7 +166,7 @@ button:hover {
 .box {
     width: 60px;
     height: 60px;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: #0f766e;
     border-radius: 10px;
     animation: bounce 1.5s ease-in-out infinite;
 }
@@ -208,7 +208,7 @@ button:hover {
 .card {
     width: 300px;
     height: 200px;
-    background: linear-gradient(135deg, #1e3c72, #2a5298);
+    background: #1e3c72;
     border-radius: 20px;
     display: flex;
     align-items: center;
@@ -286,7 +286,7 @@ body {
 }
 
 header {
-    background: #667eea;
+    background: #0f766e;
     color: white;
     padding: 20px;
     text-align: center;
@@ -311,7 +311,7 @@ nav a {
 }
 
 nav a:hover {
-    background: #667eea;
+    background: #0f766e;
     color: white;
 }
 
@@ -440,7 +440,7 @@ onMounted(() => {
   transition: all 0.2s ease;
   
   &:hover {
-    background: rgba(79, 70, 229, 0.05);
+    background: $primary-light;
   }
   
   &.active {

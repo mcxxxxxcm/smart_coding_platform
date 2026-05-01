@@ -151,9 +151,7 @@ const handleCommand = (command: string) => {
   color: $primary-color;
   
   span {
-    background: linear-gradient(135deg, $primary-color, #7c3aed);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: $text-primary;
   }
 }
 
@@ -171,12 +169,12 @@ const handleCommand = (command: string) => {
   
   &:hover {
     color: $primary-color;
-    background: rgba(79, 70, 229, 0.1);
+    background: $primary-light;
   }
   
   &.active {
     color: $primary-color;
-    background: rgba(79, 70, 229, 0.1);
+    background: $primary-light;
   }
 }
 

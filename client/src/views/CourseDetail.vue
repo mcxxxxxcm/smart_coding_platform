@@ -182,10 +182,10 @@ onMounted(fetchCourse)
   justify-content: center;
   color: white;
   
-  &.frontend { background: linear-gradient(135deg, #f97316, #ea580c); }
-  &.backend { background: linear-gradient(135deg, #68a063, #3c873a); }
-  &.database { background: linear-gradient(135deg, #00758f, #f29111); }
-  &.ai { background: linear-gradient(135deg, #ff6f61, #6b5b95); }
+  &.frontend { background: $color-frontend; }
+  &.backend { background: $color-backend; }
+  &.database { background: $color-database; }
+  &.ai { background: $color-ai; }
 }
 
 .course-info {
@@ -247,7 +247,7 @@ onMounted(fetchCourse)
   transition: background 0.2s ease;
   
   &:hover {
-    background: rgba(79, 70, 229, 0.05);
+    background: $primary-light;
   }
   
   .lesson-title {

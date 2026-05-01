@@ -265,8 +265,8 @@ onMounted(fetchPosts)
     }
 
     &.pinned-post {
-      border-left: 4px solid #f56c6c;
-      background: linear-gradient(135deg, #fff5f5 0%, #ffffff 100%);
+      border-left: 4px solid #dc2626;
+      background: #fef2f2;
     }
   }
 

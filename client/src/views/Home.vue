@@ -188,9 +188,7 @@ onMounted(async () => {
     font-weight: 800;
     line-height: 1.2;
     margin-bottom: 20px;
-    background: linear-gradient(135deg, $primary-color, #7c3aed);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: $text-primary;
   }
   
   p {
@@ -235,16 +233,17 @@ onMounted(async () => {
 }
 
 .code-window {
-  background: #1e1e1e;
+  background: $code-bg;
   border-radius: $radius-lg;
   overflow: hidden;
-  box-shadow: $shadow-lg;
+  box-shadow: $shadow-xl;
   width: 100%;
   max-width: 500px;
+  border: 1px solid #45475a;
 }
 
 .code-header {
-  background: #323232;
+  background: $code-header;
   padding: 12px 16px;
   display: flex;
   align-items: center;
@@ -256,14 +255,14 @@ onMounted(async () => {
   height: 12px;
   border-radius: 50%;
   
-  &.red { background: #ff5f56; }
-  &.yellow { background: #ffbd2e; }
-  &.green { background: #27ca40; }
+  &.red { background: #f38ba8; }
+  &.yellow { background: #f9e2af; }
+  &.green { background: #a6e3a1; }
 }
 
 .file-name {
   margin-left: 12px;
-  color: #888;
+  color: #6c7086;
   font-size: 0.9rem;
 }
 
@@ -272,15 +271,15 @@ onMounted(async () => {
   font-family: 'Fira Code', 'Consolas', monospace;
   font-size: 0.95rem;
   line-height: 1.8;
-  color: #d4d4d4;
+  color: $code-text;
   overflow-x: auto;
   
-  .keyword { color: #569cd6; }
-  .function { color: #dcdcaa; }
-  .string { color: #ce9178; }
-  .param { color: #9cdcfe; }
-  .built-in { color: #4ec9b0; }
-  .comment { color: #6a9955; }
+  .keyword { color: #cba6f7; }
+  .function { color: #a6e3a1; }
+  .string { color: #fab387; }
+  .param { color: #89b4fa; }
+  .built-in { color: #94e2d5; }
+  .comment { color: #6c7086; }
 }
 
 .courses-section {
@@ -316,13 +315,14 @@ onMounted(async () => {
   background: white;
   border-radius: $radius-lg;
   overflow: hidden;
-  box-shadow: $shadow-md;
-  transition: all 0.3s ease;
+  border: 1px solid $border-color;
+  transition: all 0.2s ease;
   cursor: pointer;
   
   &:hover {
-    transform: translateY(-5px);
-    box-shadow: $shadow-lg;
+    border-color: $primary-border;
+    box-shadow: $shadow-md;
+    transform: translateY(-2px);
   }
 }
 
@@ -333,10 +333,10 @@ onMounted(async () => {
   justify-content: center;
   color: white;
   
-  &.frontend { background: linear-gradient(135deg, #f97316, #ea580c); }
-  &.backend { background: linear-gradient(135deg, #68a063, #3c873a); }
-  &.database { background: linear-gradient(135deg, #00758f, #f29111); }
-  &.ai { background: linear-gradient(135deg, #ff6f61, #6b5b95); }
+  &.frontend { background: $color-frontend; }
+  &.backend { background: $color-backend; }
+  &.database { background: $color-database; }
+  &.ai { background: $color-ai; }
 }
 
 .course-info {
@@ -351,9 +351,9 @@ onMounted(async () => {
   font-weight: 500;
   margin-bottom: 12px;
   
-  &.beginner { background: #dcfce7; color: #166534; }
-  &.intermediate { background: #fef3c7; color: #92400e; }
-  &.advanced { background: #fee2e2; color: #991b1b; }
+  &.beginner { background: $color-easy-bg; color: $color-easy-text; }
+  &.intermediate { background: $color-medium-bg; color: $color-medium-text; }
+  &.advanced { background: $color-hard-bg; color: $color-hard-text; }
 }
 
 .course-info h3 {
@@ -393,6 +393,7 @@ onMounted(async () => {
 .features-section {
   padding: 80px 40px;
   background: white;
+  border-top: 1px solid $border-color;
 }
 
 .features-grid {
@@ -407,11 +408,11 @@ onMounted(async () => {
   text-align: center;
   padding: 30px;
   border-radius: $radius-lg;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   
   &:hover {
-    background: $bg-color;
-    transform: translateY(-5px);
+    background: $primary-light;
+    transform: translateY(-2px);
   }
 }
 
@@ -419,12 +420,13 @@ onMounted(async () => {
   width: 70px;
   height: 70px;
   margin: 0 auto 20px;
-  background: linear-gradient(135deg, $primary-color, #7c3aed);
+  background: $primary-light;
+  border: 1px solid $primary-border;
   border-radius: $radius-md;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: $primary-color;
 }
 
 .feature-card h3 {

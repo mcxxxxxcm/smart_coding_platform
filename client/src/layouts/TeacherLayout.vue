@@ -184,7 +184,7 @@ const pageTitle = computed(() => {
   &.active {
     background: $primary-color;
     color: white;
-    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+    box-shadow: 0 4px 12px rgba(15, 118, 110, 0.3);
   }
 }
 

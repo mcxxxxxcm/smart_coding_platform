@@ -400,6 +400,6 @@ INSERT INTO problems (title, description, difficulty, category, tags, input_form
 
 -- 插入初始帖子数据
 INSERT INTO posts (title, content, author_id, category, tags, view_count, like_count, comment_count, status) VALUES
-('How to learn programming efficiently?', 'Practice is the key to learning programming. Start with basics and build projects.', 2, 'article', '["learning", "programming"]', 1520, 89, 23, 'published'),
-('Vue3 Composition API Guide', 'Vue3 introduces Composition API for better code organization.', 2, 'article', '["Vue", "frontend"]', 890, 56, 12, 'published'),
-('Help: How to optimize Two Sum?', 'I used double loop with O(n2) complexity. How to optimize to O(n)?', 1, 'question', '["algorithm", "help"]', 456, 34, 18, 'published');
+('如何高效学习编程？', '实践是学习编程的关键。从基础开始，循序渐进地构建项目，多动手写代码才能真正掌握编程技能。建议每天坚持练习，从简单的小项目做起，逐步挑战更复杂的问题。', 2, 'article', '["学习", "编程"]', 1520, 89, 23, 'published'),
+('Vue3 组合式 API 入门指南', 'Vue3 引入了组合式 API，让代码组织更加灵活和清晰。相比选项式 API，组合式 API 可以更好地复用逻辑代码，提升开发效率。', 2, 'article', '["Vue", "前端"]', 890, 56, 12, 'published'),
+('求助：如何优化两数之和问题？', '我用了双重循环，时间复杂度是 O(n²)，运行超时了。请问如何优化到 O(n) 的时间复杂度？听说可以用哈希表，但不太理解具体思路。', 1, 'question', '["算法", "求助"]', 456, 34, 18, 'published');

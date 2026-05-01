@@ -546,10 +546,12 @@ onMounted(fetchProblems)
 </script>
 
 <style scoped lang="scss">
+@use '@/styles/variables.scss' as *;
+
 .practice-page {
   height: calc(100vh - 60px);
   overflow: hidden;
-  background: #f5f5f5;
+  background: $surface-color;
   position: relative;
 }
 
@@ -562,7 +564,7 @@ onMounted(fetchProblems)
   width: 280px;
   min-width: 60px;
   background: white;
-  border-right: 1px solid #e0e0e0;
+  border-right: 1px solid $border-color;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -587,7 +589,7 @@ onMounted(fetchProblems)
 
 .sidebar-header {
   padding: 12px;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid $border-color;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -597,7 +599,7 @@ onMounted(fetchProblems)
     margin: 0;
     font-size: 14px;
     font-weight: 600;
-    color: #1e293b;
+    color: $text-primary;
     white-space: nowrap;
   }
   
@@ -615,7 +617,7 @@ onMounted(fetchProblems)
 
 .problem-item {
   padding: 10px 12px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid $border-light;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -623,17 +625,17 @@ onMounted(fetchProblems)
   transition: all 0.15s ease;
   
   &:hover {
-    background: #f8f9ff;
+    background: $primary-light;
   }
   
   &.active {
-    background: #eef2ff;
-    border-left: 3px solid #4f46e5;
+    background: $primary-light;
+    border-left: 3px solid $primary-color;
   }
 }
 
 .problem-id {
-  color: #999;
+  color: $text-muted;
   font-size: 13px;
   min-width: 24px;
   font-weight: 500;
@@ -642,7 +644,7 @@ onMounted(fetchProblems)
 .problem-title {
   flex: 1;
   font-size: 13px;
-  color: #1e293b;
+  color: $text-primary;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -655,9 +657,9 @@ onMounted(fetchProblems)
   font-weight: 500;
   white-space: nowrap;
   
-  &.easy { background: #dcfce7; color: #166534; }
-  &.medium { background: #fef3c7; color: #92400e; }
-  &.hard { background: #fee2e2; color: #991b1b; }
+  &.easy { background: $color-easy-bg; color: $color-easy-text; }
+  &.medium { background: $color-medium-bg; color: $color-medium-text; }
+  &.hard { background: $color-hard-bg; color: $color-hard-text; }
 }
 
 .main-content {
@@ -687,17 +689,17 @@ onMounted(fetchProblems)
 
 .problem-header {
   padding: 12px 20px;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid $border-color;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #fafafa;
+  background: $surface-color;
   
   h2 {
     margin: 0;
     font-size: 16px;
     font-weight: 600;
-    color: #1e293b;
+    color: $text-primary;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -726,17 +728,17 @@ onMounted(fetchProblems)
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid #e0e0e0;
+  border-right: 1px solid $border-color;
   
   .panel-header {
     padding: 8px 16px;
-    background: #fafafa;
-    border-bottom: 1px solid #e0e0e0;
+    background: $surface-color;
+    border-bottom: 1px solid $border-color;
     
     .panel-title {
       font-size: 13px;
       font-weight: 600;
-      color: #1e293b;
+      color: $text-primary;
     }
   }
   
@@ -748,13 +750,13 @@ onMounted(fetchProblems)
 
 .splitter {
   width: 6px;
-  background: #f0f0f0;
+  background: $border-light;
   cursor: col-resize;
   flex-shrink: 0;
   position: relative;
   
   &:hover {
-    background: #4f46e5;
+    background: $primary-color;
   }
   
   &::after {
@@ -765,7 +767,7 @@ onMounted(fetchProblems)
     transform: translate(-50%, -50%);
     width: 2px;
     height: 40px;
-    background: #ccc;
+    background: $border-color;
     border-radius: 2px;
   }
 }
@@ -778,13 +780,13 @@ onMounted(fetchProblems)
   
   .panel-header {
     padding: 8px 16px;
-    background: #fafafa;
-    border-bottom: 1px solid #e0e0e0;
+    background: $surface-color;
+    border-bottom: 1px solid $border-color;
     
     .panel-title {
       font-size: 13px;
       font-weight: 600;
-      color: #1e293b;
+      color: $text-primary;
     }
   }
   
@@ -797,7 +799,7 @@ onMounted(fetchProblems)
 .problem-description {
   padding: 20px;
   line-height: 1.8;
-  color: #333;
+  color: $text-primary;
   font-size: 14px;
   
   p {
@@ -806,10 +808,10 @@ onMounted(fetchProblems)
   
   :deep(h3) {
     font-size: 16px;
-    color: #1e293b;
+    color: $text-primary;
     margin: 20px 0 12px 0;
     font-weight: 600;
-    border-left: 3px solid #4f46e5;
+    border-left: 3px solid $primary-color;
     padding-left: 12px;
     line-height: 1.4;
     
@@ -819,13 +821,13 @@ onMounted(fetchProblems)
   }
   
   :deep(strong) {
-    color: #4f46e5;
+    color: $primary-color;
     font-weight: 600;
   }
   
   :deep(code) {
-    background: #f0f7ff;
-    color: #e6a23c;
+    background: $primary-light;
+    color: $accent-color;
     padding: 2px 6px;
     border-radius: 4px;
     font-size: 13px;
@@ -833,8 +835,8 @@ onMounted(fetchProblems)
   }
   
   :deep(pre) {
-    background: #1e1e1e;
-    color: #d4d4d4;
+    background: $code-bg;
+    color: $code-text;
     padding: 16px;
     border-radius: 8px;
     overflow-x: auto;
@@ -851,26 +853,26 @@ onMounted(fetchProblems)
   }
   
   :deep(blockquote) {
-    background: linear-gradient(135deg, #fff9e6 0%, #fff3cd 100%);
-    border-left: 4px solid #ffc107;
+    background: $color-medium-bg;
+    border-left: 4px solid $accent-color;
     padding: 12px 16px;
     margin: 16px 0;
     border-radius: 0 8px 8px 0;
-    color: #856404;
+    color: $color-medium-text;
     
     p {
       margin-bottom: 0;
     }
     
     strong {
-      color: #856404;
+      color: $color-medium-text;
     }
   }
   
   :deep(hr) {
     border: none;
-    height: 2px;
-    background: linear-gradient(to right, transparent, #e4e7ed, transparent);
+    height: 1px;
+    background: $border-color;
     margin: 20px 0;
   }
   
@@ -882,7 +884,7 @@ onMounted(fetchProblems)
       margin-bottom: 8px;
       
       strong {
-        color: #1e293b;
+        color: $text-primary;
       }
     }
   }
@@ -891,7 +893,7 @@ onMounted(fetchProblems)
     margin: 8px 0;
     
     strong {
-      color: #1e293b;
+      color: $text-primary;
       font-size: 14px;
     }
   }
@@ -907,18 +909,18 @@ onMounted(fetchProblems)
   font-family: 'Fira Code', 'Consolas', 'Monaco', monospace;
   font-size: 14px;
   line-height: 1.6;
-  background: #1e1e1e;
-  color: #d4d4d4;
+  background: $code-bg;
+  color: $code-text;
   tab-size: 2;
   
   &::placeholder {
-    color: #666;
+    color: #585b70;
   }
 }
 
 .console-panel {
-  border-top: 2px solid #e0e0e0;
-  background: #252526;
+  border-top: 2px solid $border-color;
+  background: $code-bg;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -927,7 +929,7 @@ onMounted(fetchProblems)
 
 .console-resizer {
   height: 6px;
-  background: #f0f0f0;
+  background: $border-light;
   cursor: row-resize;
   position: absolute;
   top: -3px;
@@ -936,7 +938,7 @@ onMounted(fetchProblems)
   z-index: 10;
   
   &:hover {
-    background: #4f46e5;
+    background: $primary-color;
   }
 }
 
@@ -945,8 +947,8 @@ onMounted(fetchProblems)
   justify-content: space-between;
   align-items: center;
   padding: 8px 16px;
-  background: #2d2d30;
-  border-bottom: 1px solid #3e3e42;
+  background: $code-header;
+  border-bottom: 1px solid #45475a;
 }
 
 .toolbar-left {
@@ -956,7 +958,7 @@ onMounted(fetchProblems)
 }
 
 .console-title {
-  color: #cccccc;
+  color: #a6adc8;
   font-size: 13px;
   font-weight: 600;
 }
@@ -991,7 +993,7 @@ onMounted(fetchProblems)
 .console-body {
   flex: 1;
   overflow-y: auto;
-  background: #1e1e1e;
+  background: $code-bg;
 }
 
 .console-output {
@@ -1002,7 +1004,7 @@ onMounted(fetchProblems)
     font-family: 'Fira Code', 'Consolas', monospace;
     font-size: 13px;
     line-height: 1.7;
-    color: #d4d4d4;
+    color: $code-text;
     white-space: pre-wrap;
     word-wrap: break-word;
   }
@@ -1011,7 +1013,7 @@ onMounted(fetchProblems)
     margin-bottom: 12px;
     
     .output-label {
-      color: #888;
+      color: #585b70;
       font-size: 12px;
       letter-spacing: 1px;
     }
@@ -1030,7 +1032,7 @@ onMounted(fetchProblems)
   }
   
   &.running {
-    background: #1e1e1e;
+    background: $code-bg;
   }
 }
 
@@ -1038,12 +1040,12 @@ onMounted(fetchProblems)
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #888;
+  color: #585b70;
   font-size: 13px;
   
   .el-icon {
     font-size: 18px;
-    color: #007acc;
+    color: $primary-color;
   }
 }
 
@@ -1053,7 +1055,7 @@ onMounted(fetchProblems)
   align-items: center;
   justify-content: center;
   height: 140px;
-  color: #555;
+  color: #585b70;
   
   .el-icon {
     font-size: 40px;
@@ -1067,7 +1069,7 @@ onMounted(fetchProblems)
     
     &.hint {
       font-size: 12px;
-      color: #444;
+      color: #45475a;
       margin-top: 4px;
     }
   }
@@ -1084,7 +1086,7 @@ onMounted(fetchProblems)
 .ai-panel {
   width: 380px;
   background: white;
-  border-left: 1px solid #e0e0e0;
+  border-left: 1px solid $border-color;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -1108,7 +1110,7 @@ onMounted(fetchProblems)
   
   .ai-header {
     padding: 16px 20px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: $primary-color;
     color: white;
     display: flex;
     align-items: center;
@@ -1141,7 +1143,7 @@ onMounted(fetchProblems)
     display: flex;
     flex-direction: column;
     gap: 8px;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid $border-color;
     
     .el-button {
       width: 100%;
@@ -1149,13 +1151,13 @@ onMounted(fetchProblems)
       display: flex;
       align-items: center;
       gap: 8px;
-      background: #f5f7ff;
-      border-color: #e0e5ff;
-      color: #4f46e5;
+      background: $primary-light;
+      border-color: $primary-border;
+      color: $primary-color;
       
       &:hover {
-        background: #e8ecff;
-        border-color: #c7ccff;
+        background: rgba(15, 118, 110, 0.12);
+        border-color: $primary-color;
       }
       
       .el-icon {
@@ -1168,7 +1170,7 @@ onMounted(fetchProblems)
     flex: 1;
     overflow-y: auto;
     padding: 16px;
-    background: #f8f9fa;
+    background: $surface-color;
     
     .message {
       margin-bottom: 12px;
@@ -1178,7 +1180,7 @@ onMounted(fetchProblems)
         justify-content: flex-end;
         
         .message-bubble {
-          background: #4f46e5;
+          background: $primary-color;
           color: white;
           border-radius: 12px 12px 0 12px;
           
@@ -1198,8 +1200,8 @@ onMounted(fetchProblems)
         
         .message-bubble {
           background: white;
-          color: #1e293b;
-          border: 1px solid #e0e0e0;
+          color: $text-primary;
+          border: 1px solid $border-color;
           border-radius: 12px 12px 12px 0;
         }
       }
@@ -1209,7 +1211,7 @@ onMounted(fetchProblems)
           display: flex;
           align-items: center;
           gap: 8px;
-          color: #888;
+          color: $text-muted;
           font-style: italic;
         }
       }
@@ -1234,8 +1236,8 @@ onMounted(fetchProblems)
         }
         
         :deep(pre) {
-          background: #1e1e1e;
-          color: #d4d4d4;
+          background: $code-bg;
+          color: $code-text;
           padding: 10px;
           border-radius: 6px;
           overflow-x: auto;
@@ -1251,8 +1253,8 @@ onMounted(fetchProblems)
         }
         
         :deep(code) {
-          background: #f0f7ff;
-          color: #e6a23c;
+          background: $primary-light;
+          color: $accent-color;
           padding: 2px 4px;
           border-radius: 3px;
           font-size: 12px;
@@ -1270,14 +1272,14 @@ onMounted(fetchProblems)
         
         :deep(strong) {
           font-weight: 600;
-          color: #4f46e5;
+          color: $primary-color;
         }
         
         :deep(blockquote) {
-          border-left: 3px solid #4f46e5;
+          border-left: 3px solid $primary-color;
           padding-left: 10px;
           margin: 8px 0;
-          color: #666;
+          color: $text-secondary;
         }
       }
     }
@@ -1286,17 +1288,17 @@ onMounted(fetchProblems)
   .ai-footer {
     padding: 12px 16px;
     background: white;
-    border-top: 1px solid #e0e0e0;
+    border-top: 1px solid $border-color;
     
     .el-input {
       .el-button {
-        background: #4f46e5;
-        border-color: #4f46e5;
+        background: $primary-color;
+        border-color: $primary-color;
         color: white;
         
         &:hover {
-          background: #4338ca;
-          border-color: #4338ca;
+          background: $primary-hover;
+          border-color: $primary-hover;
         }
       }
     }

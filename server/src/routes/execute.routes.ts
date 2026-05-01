@@ -1,34 +1,24 @@
 import { Router } from 'express';
+import { body } from 'express-validator';
 import { authenticate } from '../middleware/auth.middleware';
 import { CodeExecutor } from '../services/code-executor.service';
+import { validate } from '../middleware/validate.middleware';
+import { asyncHandler } from '../middleware/async.middleware';
 
 const router = Router();
 const codeExecutor = new CodeExecutor();
 
-router.post('/', authenticate, async (req, res) => {
-  try {
+router.post('/', authenticate,
+  validate([
+    body('code').trim().notEmpty().withMessage('代码不能为空'),
+    body('language').isIn(['python', 'cpp', 'c', 'c++']).withMessage('不支持的语言')
+  ]),
+  asyncHandler(async (req, res) => {
     const { code, language } = req.body;
-    
-    if (!code || !language) {
-      return res.status(400).json({
-        success: false,
-        message: '缺少代码或语言参数'
-      });
-    }
-    
-    // 为了测试，我们使用一个简单的测试用例
-    const testCases = [
-      {
-        input: '',
-        output: 'Hello World',
-        is_hidden: false
-      }
-    ];
-    
+    const testCases = [{ input: '', output: 'Hello World', is_hidden: false }];
     const results = await codeExecutor.execute(language, code, testCases, 1000, 256);
-    
     const result = results[0];
-    
+
     res.json({
       success: true,
       data: {
@@ -39,13 +29,7 @@ router.post('/', authenticate, async (req, res) => {
         memory: result.memory
       }
     });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: '代码执行失败',
-      error: (error as Error).message
-    });
-  }
-});
+  })
+);
 
 export default router;

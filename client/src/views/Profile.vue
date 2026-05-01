@@ -319,9 +319,9 @@ onMounted(fetchSubmissions)
   font-size: 0.75rem;
   font-weight: 500;
   
-  &.easy { background: #dcfce7; color: #166534; }
-  &.medium { background: #fef3c7; color: #92400e; }
-  &.hard { background: #fee2e2; color: #991b1b; }
+  &.easy { background: $color-easy-bg; color: $color-easy-text; }
+  &.medium { background: $color-medium-bg; color: $color-medium-text; }
+  &.hard { background: $color-hard-bg; color: $color-hard-text; }
 }
 
 .submission-meta {
@@ -336,8 +336,8 @@ onMounted(fetchSubmissions)
     border-radius: 20px;
     font-weight: 500;
     
-    &.accepted { background: #dcfce7; color: #166534; }
-    &.wrong_answer { background: #fee2e2; color: #991b1b; }
+    &.accepted { background: $color-easy-bg; color: $color-easy-text; }
+    &.wrong_answer { background: $color-hard-bg; color: $color-hard-text; }
   }
 }
 

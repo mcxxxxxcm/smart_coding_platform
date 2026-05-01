@@ -1,47 +1,60 @@
 import { Router } from 'express';
+import { body } from 'express-validator';
 import { authenticate, authorize } from '../middleware/auth.middleware';
 import { AdminController } from '../controllers/admin.controller';
+import { validate } from '../middleware/validate.middleware';
+import { bindController } from '../middleware/async.middleware';
 
 const router = Router();
-const adminController = new AdminController();
+const admin = bindController(new AdminController());
 
-// All routes require authentication and admin role
 router.use(authenticate, authorize('admin'));
 
-// Stats
-router.get('/stats', adminController.getSystemStats);
-router.get('/roles', adminController.getRoles);
+router.get('/stats', admin.getSystemStats);
+router.get('/roles', admin.getRoles);
 
-// User management
-router.get('/users', adminController.getUsers);
-router.put('/users/:id', adminController.updateUser);
-router.delete('/users/:id', adminController.deleteUser);
+router.get('/users', admin.getUsers);
+router.put('/users/:id',
+  validate([
+    body('role').optional().isIn(['student', 'teacher', 'admin']).withMessage('无效的角色')
+  ]),
+  admin.updateUser
+);
+router.delete('/users/:id', admin.deleteUser);
 
-// Course review
-router.get('/courses', adminController.getCoursesForReview);
-router.put('/courses/:id/review', adminController.reviewCourse);
+router.get('/courses', admin.getCoursesForReview);
+router.put('/courses/:id/review',
+  validate([
+    body('status').isIn(['approved', 'rejected', 'published', 'archived']).withMessage('无效的审核状态')
+  ]),
+  admin.reviewCourse
+);
 
-// Problem review
-router.get('/problems', adminController.getProblemsForReview);
-router.put('/problems/:id/review', adminController.reviewProblem);
+router.get('/problems', admin.getProblemsForReview);
+router.put('/problems/:id/review',
+  validate([
+    body('status').isIn(['published', 'archived']).withMessage('无效的审核状态')
+  ]),
+  admin.reviewProblem
+);
 
-// Community moderation
-router.get('/community', adminController.getPostsForReview);
-router.put('/community/:id', adminController.moderatePost);
+router.get('/community', admin.getPostsForReview);
+router.put('/community/:id',
+  validate([
+    body('status').isIn(['published', 'hidden']).withMessage('无效的审核状态')
+  ]),
+  admin.moderatePost
+);
 
-// System settings
-router.get('/settings', adminController.getSettings);
-router.put('/settings', adminController.updateSettings);
+router.get('/settings', admin.getSettings);
+router.put('/settings', admin.updateSettings);
 
-// Security settings
-router.get('/security', adminController.getSecuritySettings);
-router.put('/security', adminController.updateSecuritySettings);
+router.get('/security', admin.getSecuritySettings);
+router.put('/security', admin.updateSecuritySettings);
 
-// Operation logs
-router.get('/logs', adminController.getOperationLogs);
+router.get('/logs', admin.getOperationLogs);
 
-// Database maintenance
-router.get('/database', adminController.getDatabaseStats);
-router.post('/database/optimize', adminController.optimizeDatabase);
+router.get('/database', admin.getDatabaseStats);
+router.post('/database/optimize', admin.optimizeDatabase);
 
 export default router;

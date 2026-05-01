@@ -16,6 +16,7 @@ import examRoutes from './routes/exam.routes';
 import executeRoutes from './routes/execute.routes';
 import adminRoutes from './routes/admin.routes';
 import { testConnection } from './config/database';
+import { connectRedis, isRedisConnected } from './config/redis';
 
 dotenv.config();
 
@@ -30,8 +31,8 @@ const limiter = rateLimit({
 
 app.use(helmet());
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? process.env.FRONTEND_URL 
+  origin: process.env.NODE_ENV === 'production'
+    ? process.env.FRONTEND_URL
     : ['http://localhost:5173', 'http://localhost:3000'],
   credentials: true
 }));
@@ -40,63 +41,45 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/api/', limiter);
 
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+app.get('/health', (_req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    redis: isRedisConnected() ? 'connected' : 'disconnected'
+  });
 });
 
-console.log('注册路由: /api/auth');
 app.use('/api/auth', authRoutes);
-console.log('注册路由: /api/users');
 app.use('/api/users', userRoutes);
-console.log('注册路由: /api/courses');
 app.use('/api/courses', courseRoutes);
-console.log('注册路由: /api/problems');
 app.use('/api/problems', problemRoutes);
-console.log('注册路由: /api/submissions');
 app.use('/api/submissions', submissionRoutes);
-console.log('注册路由: /api/community');
 app.use('/api/community', communityRoutes);
-console.log('注册路由: /api/ai');
 app.use('/api/ai', aiRoutes);
-console.log('注册路由: /api/exams');
 app.use('/api/exams', examRoutes);
-console.log('注册路由: /api/execute');
 app.use('/api/execute', executeRoutes);
-console.log('注册路由: /api/admin');
 app.use('/api/admin', adminRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
-
-// 全局错误处理器
-app.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error('未捕获的异常:', err);
-  res.status(500).json({
-    success: false,
-    message: '服务器内部错误',
-    error: process.env.NODE_ENV === 'development' ? err.message : undefined
-  });
-});
 
 export default app;
 
 if (require.main === module) {
   const startServer = async () => {
     try {
-      console.log('正在连接数据库...');
       const dbConnected = await testConnection();
-      
       if (!dbConnected) {
         console.error('数据库连接失败，请检查配置');
-        console.error('请确保 MySQL 服务正在运行，且数据库已创建');
-        console.error('数据库配置:', {
-          host: process.env.DB_HOST,
-          port: process.env.DB_PORT,
-          user: process.env.DB_USER,
-          database: process.env.DB_NAME
-        });
       }
-      
+
+      try {
+        await connectRedis();
+        console.log('Redis 缓存已初始化');
+      } catch (redisErr) {
+        console.warn('Redis 连接失败，将不使用缓存:', (redisErr as Error).message);
+      }
+
       app.listen(PORT, () => {
         console.log(`服务器运行在端口 ${PORT}`);
         console.log(`环境: ${process.env.NODE_ENV || 'development'}`);
@@ -107,6 +90,6 @@ if (require.main === module) {
       process.exit(1);
     }
   };
-  
+
   startServer();
 }

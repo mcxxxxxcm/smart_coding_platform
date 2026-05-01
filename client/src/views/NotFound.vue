@@ -25,9 +25,7 @@
   h1 {
     font-size: 8rem;
     font-weight: 800;
-    background: linear-gradient(135deg, $primary-color, #7c3aed);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: $primary-color;
     margin-bottom: 20px;
   }
   

@@ -226,17 +226,18 @@ onMounted(() => {
 }
 
 .course-card {
-  background: #fff;
-  border-radius: 12px;
+  background: white;
+  border-radius: $radius-lg;
   overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s, box-shadow 0.3s;
+  border: 1px solid $border-color;
+  transition: all 0.2s ease;
   display: flex;
   flex-direction: column;
   
   &:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    border-color: $primary-border;
+    box-shadow: $shadow-md;
+    transform: translateY(-2px);
   }
   
   .course-content {
@@ -246,25 +247,11 @@ onMounted(() => {
   
   .course-actions {
     padding: 16px;
-    border-top: 1px solid #f0f0f0;
+    border-top: 1px solid $border-light;
     
     .start-btn {
       width: 100%;
     }
-  }
-}
-
-.course-card {
-  background: white;
-  border-radius: $radius-lg;
-  overflow: hidden;
-  box-shadow: $shadow-md;
-  transition: all 0.3s ease;
-  cursor: pointer;
-  
-  &:hover {
-    transform: translateY(-5px);
-    box-shadow: $shadow-lg;
   }
 }
 
@@ -275,10 +262,10 @@ onMounted(() => {
   justify-content: center;
   color: white;
   
-  &.frontend { background: linear-gradient(135deg, #f97316, #ea580c); }
-  &.backend { background: linear-gradient(135deg, #68a063, #3c873a); }
-  &.database { background: linear-gradient(135deg, #00758f, #f29111); }
-  &.ai { background: linear-gradient(135deg, #ff6f61, #6b5b95); }
+  &.frontend { background: $color-frontend; }
+  &.backend { background: $color-backend; }
+  &.database { background: $color-database; }
+  &.ai { background: $color-ai; }
 }
 
 .course-info {
@@ -293,9 +280,9 @@ onMounted(() => {
   font-weight: 500;
   margin-bottom: 12px;
   
-  &.beginner { background: #dcfce7; color: #166534; }
-  &.intermediate { background: #fef3c7; color: #92400e; }
-  &.advanced { background: #fee2e2; color: #991b1b; }
+  &.beginner { background: $color-easy-bg; color: $color-easy-text; }
+  &.intermediate { background: $color-medium-bg; color: $color-medium-text; }
+  &.advanced { background: $color-hard-bg; color: $color-hard-text; }
 }
 
 .course-info h3 {

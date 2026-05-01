@@ -107,7 +107,7 @@
       
       <aside class="ai-panel" v-if="aiPanelVisible && currentProblem">
         <div class="ai-panel-header">
-          <el-icon :size="20" color="#626aef"><MagicStick /></el-icon>
+          <el-icon :size="20" color="#0f766e"><MagicStick /></el-icon>
           <span>AI 编程助手</span>
         </div>
         
@@ -136,7 +136,7 @@
             :class="msg.role"
           >
             <div class="message-avatar">
-              <el-icon v-if="msg.role === 'assistant'" :size="16" color="#626aef"><MagicStick /></el-icon>
+              <el-icon v-if="msg.role === 'assistant'" :size="16" color="#0f766e"><MagicStick /></el-icon>
               <el-icon v-else :size="16" color="#409eff"><User /></el-icon>
             </div>
             <div class="message-content">
@@ -145,7 +145,7 @@
           </div>
           <div v-if="aiLoading" class="ai-message assistant">
             <div class="message-avatar">
-              <el-icon :size="16" color="#626aef"><MagicStick /></el-icon>
+              <el-icon :size="16" color="#0f766e"><MagicStick /></el-icon>
             </div>
             <div class="message-content">
               <div class="typing-indicator">
@@ -421,11 +421,11 @@ onMounted(fetchProblems)
   gap: 12px;
   
   &:hover {
-    background: rgba(79, 70, 229, 0.05);
+    background: $primary-light;
   }
   
   &.active {
-    background: rgba(79, 70, 229, 0.1);
+    background: $primary-light;
     border-left: 3px solid $primary-color;
   }
 }
@@ -448,9 +448,9 @@ onMounted(fetchProblems)
   font-size: 0.75rem;
   font-weight: 500;
   
-  &.easy { background: #dcfce7; color: #166534; }
-  &.medium { background: #fef3c7; color: #92400e; }
-  &.hard { background: #fee2e2; color: #991b1b; }
+  &.easy { background: $color-easy-bg; color: $color-easy-text; }
+  &.medium { background: $color-medium-bg; color: $color-medium-text; }
+  &.hard { background: $color-hard-bg; color: $color-hard-text; }
 }
 
 .problem-main {
@@ -602,7 +602,7 @@ onMounted(fetchProblems)
   border-bottom: 1px solid $border-color;
   font-weight: 600;
   font-size: 15px;
-  color: #626aef;
+  color: $primary-color;
 }
 
 .ai-actions {
@@ -649,7 +649,7 @@ onMounted(fetchProblems)
     flex-direction: row-reverse;
     
     .message-content {
-      background: #626aef;
+      background: $primary-color;
       color: white;
       
       .message-text {
@@ -662,7 +662,7 @@ onMounted(fetchProblems)
     width: 28px;
     height: 28px;
     border-radius: 50%;
-    background: #f5f7fa;
+    background: $primary-light;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -671,7 +671,7 @@ onMounted(fetchProblems)
   
   .message-content {
     max-width: 85%;
-    background: #f5f7fa;
+    background: $surface-color;
     border-radius: 8px;
     padding: 10px 14px;
     
@@ -696,7 +696,7 @@ onMounted(fetchProblems)
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: #626aef;
+    background: $primary-color;
     animation: typing 1.4s infinite ease-in-out;
     
     &:nth-child(1) { animation-delay: 0s; }

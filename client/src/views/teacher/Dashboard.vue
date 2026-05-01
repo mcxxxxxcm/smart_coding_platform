@@ -30,7 +30,7 @@
           
           <div class="quick-actions">
             <div class="action-item" @click="$router.push('/teacher/courses')">
-              <el-icon :size="32" color="#4f46e5"><Plus /></el-icon>
+              <el-icon :size="32" color="#0f766e"><Plus /></el-icon>
               <span>发布新课程</span>
             </div>
             <div class="action-item" @click="$router.push('/teacher/problems')">
@@ -105,7 +105,7 @@ import { ref, onMounted } from 'vue'
 import { Plus, Document, EditPen, DataAnalysis } from '@element-plus/icons-vue'
 
 const stats = ref([
-  { title: '总课程数', value: '12', icon: 'Reading', color: '#4f46e5' },
+  { title: '总课程数', value: '12', icon: 'Reading', color: '#0f766e' },
   { title: '总学生数', value: '356', icon: 'User', color: '#059669' },
   { title: '题目数量', value: '48', icon: 'Document', color: '#dc2626' },
   { title: '平均评分', value: '4.7', icon: 'Star', color: '#d97706' }
@@ -196,9 +196,9 @@ const courses = ref([
   transition: all 0.2s ease;
   
   &:hover {
-    background: #eef2ff;
+    background: $primary-light;
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15);
+    box-shadow: 0 4px 12px rgba(15, 118, 110, 0.15);
   }
   
   span {
@@ -213,7 +213,7 @@ const courses = ref([
     display: flex;
     gap: 12px;
     padding: 12px 0;
-    border-bottom: 1px solid #f0f0f0;
+    border-bottom: 1px solid $border-light;
     
     &:last-child {
       border-bottom: none;
