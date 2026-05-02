@@ -9,13 +9,14 @@ export async function connectRedis(): Promise<void> {
     redisClient = createClient({
       socket: {
         host: config.redis.host,
-        port: config.redis.port
+        port: config.redis.port,
+        connectTimeout: 5000,
+        reconnectStrategy: false
       },
       password: config.redis.password
     });
 
-    redisClient.on('error', (err) => {
-      console.error('Redis 错误:', err);
+    redisClient.on('error', () => {
       isConnected = false;
     });
 
@@ -25,14 +26,14 @@ export async function connectRedis(): Promise<void> {
     });
 
     redisClient.on('end', () => {
-      console.log('Redis 连接关闭');
       isConnected = false;
     });
 
     await redisClient.connect();
   } catch (error) {
-    console.error('Redis 连接失败，将不使用缓存:', error);
+    console.warn('Redis 连接失败，将不使用缓存功能');
     isConnected = false;
+    redisClient = null;
   }
 }
 
