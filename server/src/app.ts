@@ -15,6 +15,7 @@ import aiRoutes from './routes/ai.routes';
 import examRoutes from './routes/exam.routes';
 import executeRoutes from './routes/execute.routes';
 import adminRoutes from './routes/admin.routes';
+import lessonCommentRoutes from './routes/lesson-comment.routes';
 import { testConnection } from './config/database';
 import { connectRedis, isRedisConnected } from './config/redis';
 
@@ -59,6 +60,7 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/exams', examRoutes);
 app.use('/api/execute', executeRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api', lessonCommentRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

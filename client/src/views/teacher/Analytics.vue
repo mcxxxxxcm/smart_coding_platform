@@ -1,7 +1,11 @@
 <template>
   <div class="analytics-page">
     <div class="page-header">
-      <h2>学情分析</h2>
+      <h2>AI 学情分析</h2>
+      <el-button type="primary" @click="generateAiInsight" :loading="loadingInsight">
+        <el-icon><MagicStick /></el-icon>
+        生成AI分析报告
+      </el-button>
     </div>
 
     <el-row :gutter="20" class="stats-row">
@@ -55,45 +59,107 @@
       <el-col :span="12">
         <el-card shadow="hover" class="chart-card">
           <template #header>
-            <span>提交趋势（最近7天）</span>
+            <div class="card-header">
+              <span>评论最多的课时</span>
+              <el-tag type="warning" size="small">需重点关注</el-tag>
+            </div>
           </template>
-          <div class="chart-placeholder">
-            <div class="simple-chart">
-              <div v-for="(item, index) in submissionTrend" :key="index" class="chart-bar">
-                <div class="bar-value">{{ item.count }}</div>
-                <div class="bar" :style="{ height: getBarHeight(item.count) + 'px' }"></div>
-                <div class="bar-label">{{ item.date }}</div>
+          <div class="lesson-rank-list" v-loading="loadingAnalytics">
+            <div v-for="(item, index) in analytics.topCommentedLessons" :key="item.lesson_id" class="rank-item">
+              <span class="rank-number" :class="{ top: index < 3 }">{{ index + 1 }}</span>
+              <div class="rank-info">
+                <div class="rank-title">{{ item.lesson_title }}</div>
+                <div class="rank-subtitle">{{ item.course_title }} · {{ item.chapter_title }}</div>
+              </div>
+              <div class="rank-value">
+                <span class="count">{{ item.comment_count }}</span>
+                <span class="unit">条评论</span>
               </div>
             </div>
+            <el-empty v-if="!loadingAnalytics && (!analytics.topCommentedLessons || analytics.topCommentedLessons.length === 0)" description="暂无数据" :image-size="60" />
           </div>
         </el-card>
       </el-col>
       <el-col :span="12">
         <el-card shadow="hover" class="chart-card">
           <template #header>
-            <span>题目难度分布</span>
+            <div class="card-header">
+              <span>通过率最低的编程题</span>
+              <el-tag type="danger" size="small">需加强辅导</el-tag>
+            </div>
           </template>
-          <div class="chart-placeholder">
-            <div class="pie-chart">
-              <div class="pie-legend">
-                <div class="legend-item">
-                  <span class="legend-color easy"></span>
-                  <span>简单: {{ difficultyStats.easy }}题</span>
-                </div>
-                <div class="legend-item">
-                  <span class="legend-color medium"></span>
-                  <span>中等: {{ difficultyStats.medium }}题</span>
-                </div>
-                <div class="legend-item">
-                  <span class="legend-color hard"></span>
-                  <span>困难: {{ difficultyStats.hard }}题</span>
+          <div class="problem-rank-list" v-loading="loadingAnalytics">
+            <div v-for="(item, index) in analytics.lowPassRateProblems" :key="item.id" class="rank-item">
+              <span class="rank-number" :class="{ top: index < 3 }">{{ index + 1 }}</span>
+              <div class="rank-info">
+                <div class="rank-title">{{ item.title }}</div>
+                <div class="rank-subtitle">
+                  {{ item.total_submissions }}次提交 · 
+                  <el-tag :type="item.difficulty === 'easy' ? 'success' : item.difficulty === 'medium' ? 'warning' : 'danger'" size="small">
+                    {{ item.difficulty === 'easy' ? '简单' : item.difficulty === 'medium' ? '中等' : '困难' }}
+                  </el-tag>
                 </div>
               </div>
+              <div class="rank-value">
+                <span class="count" :class="{ danger: item.pass_rate < 30, warning: item.pass_rate >= 30 && item.pass_rate < 60 }">{{ item.pass_rate }}%</span>
+                <span class="unit">通过率</span>
+              </div>
             </div>
+            <el-empty v-if="!loadingAnalytics && (!analytics.lowPassRateProblems || analytics.lowPassRateProblems.length === 0)" description="暂无数据" :image-size="60" />
           </div>
         </el-card>
       </el-col>
     </el-row>
+
+    <el-row :gutter="20" style="margin-top: 20px;">
+      <el-col :span="12">
+        <el-card shadow="hover" class="chart-card">
+          <template #header>
+            <span>课程学习情况</span>
+          </template>
+          <el-table :data="analytics.studentActivity" stripe size="small" v-loading="loadingAnalytics">
+            <el-table-column prop="course_title" label="课程名称" min-width="150" />
+            <el-table-column prop="enrolled_students" label="报名人数" width="100" align="center" />
+            <el-table-column prop="active_learners" label="活跃学习者" width="100" align="center" />
+            <el-table-column label="平均进度" width="120" align="center">
+              <template #default="{ row }">
+                <el-progress :percentage="row.avg_progress || 0" :stroke-width="8" :color="row.avg_progress >= 60 ? '#0f766e' : '#e6a23c'" />
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-card>
+      </el-col>
+      <el-col :span="12">
+        <el-card shadow="hover" class="chart-card">
+          <template #header>
+            <span>最新评论动态</span>
+          </template>
+          <div class="recent-comments" v-loading="loadingAnalytics">
+            <div v-for="comment in analytics.recentComments" :key="comment.id" class="recent-comment-item">
+              <div class="comment-left">
+                <el-tag v-if="comment.is_ai_reply" type="success" size="small">AI</el-tag>
+                <span class="comment-author">{{ comment.author_name }}</span>
+              </div>
+              <div class="comment-content">{{ comment.content }}</div>
+              <div class="comment-meta">
+                <span>{{ comment.lesson_title }}</span>
+                <span>{{ formatTime(comment.created_at) }}</span>
+              </div>
+            </div>
+            <el-empty v-if="!loadingAnalytics && (!analytics.recentComments || analytics.recentComments.length === 0)" description="暂无评论" :image-size="60" />
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <el-card shadow="hover" class="ai-insight-card" v-if="aiInsight">
+      <template #header>
+        <div class="card-header">
+          <span><el-icon><MagicStick /></el-icon> AI 智能分析报告</span>
+        </div>
+      </template>
+      <div class="ai-insight-content" v-html="formatInsight(aiInsight)"></div>
+    </el-card>
 
     <el-card shadow="hover" class="table-card">
       <template #header>
@@ -119,8 +185,14 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { User, Document, CircleCheck, Reading } from '@element-plus/icons-vue'
+import { User, Document, CircleCheck, Reading, MagicStick } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import request from '@/api/request'
+import { lessonCommentApi, type TeacherAnalytics } from '@/api/lesson-comment'
+import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
+
+dayjs.extend(relativeTime)
 
 const stats = reactive({
   totalStudents: 0,
@@ -129,17 +201,29 @@ const stats = reactive({
   activeCourses: 0
 })
 
-const submissionTrend = ref<{ date: string; count: number }[]>([])
-const difficultyStats = reactive({
-  easy: 0,
-  medium: 0,
-  hard: 0
-})
 const topStudents = ref<any[]>([])
+const loadingAnalytics = ref(false)
+const loadingInsight = ref(false)
+const aiInsight = ref('')
 
-const getBarHeight = (count: number) => {
-  const max = Math.max(...submissionTrend.value.map(s => s.count), 1)
-  return Math.max((count / max) * 150, 10)
+const analytics = reactive<TeacherAnalytics>({
+  topCommentedLessons: [],
+  lowPassRateProblems: [],
+  studentActivity: [],
+  recentComments: []
+})
+
+const formatTime = (time: string | undefined | null) => {
+  if (!time) return ''
+  return dayjs(time).fromNow()
+}
+
+const formatInsight = (text: string) => {
+  return text
+    .replace(/\n/g, '<br>')
+    .replace(/#{1,3}\s(.+)/g, '<strong>$1</strong>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/- (.+)/g, '&bull; $1')
 }
 
 const fetchStats = async () => {
@@ -157,32 +241,36 @@ const fetchStats = async () => {
   }
 }
 
-const fetchTrend = () => {
-  const today = new Date()
-  submissionTrend.value = Array.from({ length: 7 }, (_, i) => {
-    const date = new Date(today)
-    date.setDate(date.getDate() - (6 - i))
-    return {
-      date: `${date.getMonth() + 1}/${date.getDate()}`,
-      count: Math.floor(Math.random() * 50) + 10
-    }
-  })
-}
-
-const fetchDifficultyStats = async () => {
+const fetchAnalytics = async () => {
+  loadingAnalytics.value = true
   try {
-    const res = await request.get('/problems', { params: { limit: 100 } })
+    const res = await lessonCommentApi.getTeacherAnalytics()
     if (res.success && res.data) {
-      const problems = res.data
-      difficultyStats.easy = problems.filter((p: any) => p.difficulty === 'easy').length
-      difficultyStats.medium = problems.filter((p: any) => p.difficulty === 'medium').length
-      difficultyStats.hard = problems.filter((p: any) => p.difficulty === 'hard').length
+      Object.assign(analytics, res.data)
     }
   } catch (error) {
-    console.error('获取难度统计失败:', error)
-    difficultyStats.easy = 5
-    difficultyStats.medium = 8
-    difficultyStats.hard = 3
+    console.error('获取分析数据失败:', error)
+  } finally {
+    loadingAnalytics.value = false
+  }
+}
+
+const generateAiInsight = async () => {
+  loadingInsight.value = true
+  aiInsight.value = ''
+  try {
+    const res = await lessonCommentApi.getAiInsight()
+    if (res.success && res.data) {
+      aiInsight.value = res.data.insight
+      if (res.data.analytics) {
+        Object.assign(analytics, res.data.analytics)
+      }
+    }
+  } catch (error) {
+    console.error('生成AI分析失败:', error)
+    ElMessage.error('生成AI分析报告失败，请稍后重试')
+  } finally {
+    loadingInsight.value = false
   }
 }
 
@@ -200,18 +288,19 @@ const fetchTopStudents = async () => {
 
 onMounted(() => {
   fetchStats()
-  fetchTrend()
-  fetchDifficultyStats()
+  fetchAnalytics()
   fetchTopStudents()
 })
 </script>
 
 <style scoped lang="scss">
 @use '@/styles/variables.scss' as *;
-@use "sass:color" as sc;
 
 .analytics-page {
   .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 20px;
     
     h2 {
@@ -263,69 +352,149 @@ onMounted(() => {
   .chart-card {
     margin-bottom: 20px;
     
-    .chart-placeholder {
-      height: 200px;
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+  }
+
+  .rank-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid $border-light;
+    
+    &:last-child {
+      border-bottom: none;
+    }
+    
+    .rank-number {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-    }
-    
-    .simple-chart {
-      display: flex;
-      align-items: flex-end;
-      justify-content: space-around;
-      width: 100%;
-      height: 100%;
-      padding: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      background: $surface-color;
+      color: $text-secondary;
+      flex-shrink: 0;
       
-      .chart-bar {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        
-        .bar-value {
-          font-size: 12px;
-          color: $text-secondary;
-          margin-bottom: 4px;
-        }
-        
-        .bar {
-          width: 40px;
-          background: linear-gradient(180deg, $primary-color 0%, sc.adjust($primary-color, $lightness: 20%) 100%);
-          border-radius: 4px 4px 0 0;
-          transition: height 0.3s ease;
-        }
-        
-        .bar-label {
-          font-size: 12px;
-          color: $text-secondary;
-          margin-top: 8px;
-        }
+      &.top {
+        background: $primary-color;
+        color: white;
       }
     }
     
-    .pie-chart {
-      .pie-legend {
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
+    .rank-info {
+      flex: 1;
+      min-width: 0;
+      
+      .rank-title {
+        font-size: 14px;
+        font-weight: 500;
+        color: $text-primary;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      
+      .rank-subtitle {
+        font-size: 12px;
+        color: $text-muted;
+        margin-top: 2px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+    
+    .rank-value {
+      text-align: right;
+      flex-shrink: 0;
+      
+      .count {
+        font-size: 18px;
+        font-weight: 700;
+        color: $text-primary;
         
-        .legend-item {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          font-size: 14px;
-          
-          .legend-color {
-            width: 16px;
-            height: 16px;
-            border-radius: 4px;
-            
-            &.easy { background-color: #67c23a; }
-            &.medium { background-color: #e6a23c; }
-            &.hard { background-color: #f56c6c; }
-          }
-        }
+        &.danger { color: #dc2626; }
+        &.warning { color: #d97706; }
+      }
+      
+      .unit {
+        font-size: 12px;
+        color: $text-muted;
+        margin-left: 2px;
+      }
+    }
+  }
+
+  .recent-comments {
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  .recent-comment-item {
+    padding: 8px 0;
+    border-bottom: 1px solid $border-light;
+    
+    &:last-child {
+      border-bottom: none;
+    }
+    
+    .comment-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+      
+      .comment-author {
+        font-size: 13px;
+        font-weight: 500;
+        color: $text-primary;
+      }
+    }
+    
+    .comment-content {
+      font-size: 13px;
+      color: $text-primary;
+      line-height: 1.5;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    
+    .comment-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: $text-muted;
+      margin-top: 4px;
+    }
+  }
+
+  .ai-insight-card {
+    margin-bottom: 20px;
+    
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+      color: $primary-color;
+    }
+    
+    .ai-insight-content {
+      line-height: 1.8;
+      color: $text-primary;
+      font-size: 14px;
+      
+      :deep(strong) {
+        color: $primary-color;
       }
     }
   }
