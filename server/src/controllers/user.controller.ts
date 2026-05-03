@@ -48,6 +48,22 @@ export class UserController {
     res.json({ success: true, data: stats });
   }
 
+  async getTeacherDashboard(req: Request, res: Response, _next: NextFunction): Promise<void> {
+    const teacherId = (req as any).user.id;
+    const data = await userService.getTeacherDashboard(teacherId);
+    res.json({ success: true, data });
+  }
+
+  async getStudentProgress(req: Request, res: Response, _next: NextFunction): Promise<void> {
+    const studentId = parseInt(req.params.id);
+    if (!studentId) {
+      res.json({ success: true, data: [] });
+      return;
+    }
+    const progress = await userService.getStudentProgress(studentId);
+    res.json({ success: true, data: progress });
+  }
+
   async getEnrolledStudents(req: Request, res: Response, _next: NextFunction): Promise<void> {
     const teacherId = (req as any).user.id;
     const page = parseInt(req.query.page as string) || 1;

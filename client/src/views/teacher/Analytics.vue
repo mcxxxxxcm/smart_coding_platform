@@ -234,10 +234,6 @@ const fetchStats = async () => {
     }
   } catch (error) {
     console.error('获取统计数据失败:', error)
-    stats.totalStudents = 156
-    stats.totalSubmissions = 1234
-    stats.passRate = 68
-    stats.activeCourses = 5
   }
 }
 

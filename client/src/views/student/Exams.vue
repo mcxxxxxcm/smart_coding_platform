@@ -24,8 +24,8 @@
               <template #header>
                 <div class="exam-header">
                   <span class="exam-title">{{ exam.title }}</span>
-                  <el-tag :type="getStatusType(exam.status)" size="small">
-                    {{ getStatusText(exam.status) }}
+                  <el-tag :type="getTimeStatusType(exam)" size="small">
+                    {{ getTimeStatusText(exam) }}
                   </el-tag>
                 </div>
               </template>
@@ -44,20 +44,35 @@
                     <span>{{ exam.participant_count || 0 }}人已参加</span>
                   </div>
                 </div>
-                <div class="exam-time">
+                <div class="exam-time" v-if="exam.start_time">
                   <div class="time-label">
                     <el-icon><Calendar /></el-icon>
-                    <span>开始时间</span>
+                    <span>开放时间</span>
                   </div>
-                  <div class="time-value">{{ exam.start_time ? formatDateTime(exam.start_time) : '未设置' }}</div>
+                  <div class="time-value">
+                    {{ formatDateTime(exam.start_time) }}
+                    <template v-if="exam.end_time"> ~ {{ formatDateTime(exam.end_time) }}</template>
+                  </div>
+                </div>
+                <div class="exam-time" v-else>
+                  <div class="time-label">
+                    <el-icon><Calendar /></el-icon>
+                    <span>开放时间</span>
+                  </div>
+                  <div class="time-value">未设置</div>
                 </div>
                 <div class="exam-desc">{{ exam.description || '暂无描述' }}</div>
               </div>
               <template #footer>
                 <div class="exam-footer">
                   <span class="teacher">教师：{{ exam.teacher_name }}</span>
-                  <el-button type="primary" size="small" @click.stop="startExam(exam)">
-                    {{ exam.status === 'published' ? '开始考试' : '查看详情' }}
+                  <el-button
+                    :type="canStartExam(exam) ? 'primary' : 'info'"
+                    size="small"
+                    :disabled="!canStartExam(exam)"
+                    @click.stop="startExam(exam)"
+                  >
+                    {{ getExamButtonText(exam) }}
                   </el-button>
                 </div>
               </template>
@@ -87,10 +102,21 @@
             <el-descriptions-item label="开始时间">{{ currentExam.start_time ? formatDateTime(currentExam.start_time) : '未设置' }}</el-descriptions-item>
             <el-descriptions-item label="结束时间">{{ currentExam.end_time ? formatDateTime(currentExam.end_time) : '未设置' }}</el-descriptions-item>
             <el-descriptions-item label="教师">{{ currentExam.teacher_name }}</el-descriptions-item>
+            <el-descriptions-item label="状态">
+              <el-tag :type="getTimeStatusType(currentExam)" size="small">
+                {{ getTimeStatusText(currentExam) }}
+              </el-tag>
+            </el-descriptions-item>
           </el-descriptions>
           <template #footer>
             <el-button @click="examDetailVisible = false">关闭</el-button>
-            <el-button type="primary" @click="startExam(currentExam)" :disabled="currentExam?.status !== 'published'">开始考试</el-button>
+            <el-button
+              type="primary"
+              @click="startExam(currentExam!)"
+              :disabled="!canStartExam(currentExam!)"
+            >
+              {{ getExamButtonText(currentExam!) }}
+            </el-button>
           </template>
         </el-dialog>
       </el-tab-pane>
@@ -283,22 +309,57 @@ const historyPagination = reactive({
   total: 0
 })
 
-const getStatusText = (status: string) => {
-  const map: Record<string, string> = {
-    draft: '草稿',
-    published: '进行中',
-    ended: '已结束'
-  }
-  return map[status] || status
+type TimeStatus = 'not_open' | 'in_progress' | 'ended' | 'no_time'
+
+const getTimeStatus = (exam: Exam): TimeStatus => {
+  if (exam.status === 'draft') return 'not_open'
+  if (exam.status === 'ended') return 'ended'
+  
+  const now = new Date()
+  const startTime = exam.start_time ? new Date(exam.start_time) : null
+  const endTime = exam.end_time ? new Date(exam.end_time) : null
+  
+  if (!startTime && !endTime) return 'no_time'
+  if (startTime && now < startTime) return 'not_open'
+  if (endTime && now > endTime) return 'ended'
+  return 'in_progress'
 }
 
-const getStatusType = (status: string) => {
-  const map: Record<string, string> = {
-    draft: 'info',
-    published: 'success',
-    ended: 'warning'
+const getTimeStatusText = (exam: Exam): string => {
+  const map: Record<TimeStatus, string> = {
+    not_open: '未开放',
+    in_progress: '进行中',
+    ended: '已过期',
+    no_time: '进行中'
   }
-  return map[status] || 'info'
+  return map[getTimeStatus(exam)]
+}
+
+const getTimeStatusType = (exam: Exam): string => {
+  const map: Record<TimeStatus, string> = {
+    not_open: 'warning',
+    in_progress: 'success',
+    ended: 'info',
+    no_time: 'success'
+  }
+  return map[getTimeStatus(exam)]
+}
+
+const canStartExam = (exam: Exam): boolean => {
+  if (exam.status === 'draft') return false
+  const status = getTimeStatus(exam)
+  return status === 'in_progress' || status === 'no_time'
+}
+
+const getExamButtonText = (exam: Exam): string => {
+  const status = getTimeStatus(exam)
+  const map: Record<TimeStatus, string> = {
+    not_open: '未开放',
+    in_progress: '开始考试',
+    ended: '已过期',
+    no_time: '开始考试'
+  }
+  return map[status]
 }
 
 const formatDateTime = (date: string) => {
@@ -329,29 +390,21 @@ const resetFilters = () => {
 }
 
 const viewExam = (exam: Exam) => {
-  router.push(`/exams/${exam.id}`)
+  currentExam.value = exam
+  examDetailVisible.value = true
 }
 
 const startExam = (exam: Exam) => {
-  if (exam.status !== 'published') {
-    ElMessage.warning('该考试暂未开放')
+  if (!canStartExam(exam)) {
+    const status = getTimeStatus(exam)
+    if (status === 'not_open') {
+      ElMessage.warning('考试尚未开放，请在开放时间内参加')
+    } else if (status === 'ended') {
+      ElMessage.warning('考试已过期')
+    }
     return
   }
-  const now = new Date()
-  const startTime = exam.start_time ? new Date(exam.start_time) : null
-  const endTime = exam.end_time ? new Date(exam.end_time) : null
-  
-  if (startTime && now < startTime) {
-    ElMessage.warning('考试尚未开始')
-    return
-  }
-  
-  if (endTime && now > endTime) {
-    ElMessage.warning('考试已结束')
-    return
-  }
-  
-  ElMessage.success('正在进入考试...')
+  router.push(`/exams/${exam.id}/take`)
 }
 
 const fetchHistory = async () => {
@@ -428,6 +481,18 @@ const getStatusLabel = (status: string) => {
     memory_limit_exceeded: '内存超限'
   }
   return labels[status] || status
+}
+
+const getStatusType = (status: string) => {
+  const types: Record<string, string> = {
+    accepted: 'success',
+    wrong_answer: 'danger',
+    partial_correct: 'warning',
+    runtime_error: 'danger',
+    time_limit_exceeded: 'warning',
+    memory_limit_exceeded: 'warning'
+  }
+  return types[status] || 'info'
 }
 
 const getDifficultyLabel = (d: string) => {

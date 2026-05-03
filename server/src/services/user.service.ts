@@ -52,6 +52,14 @@ export class UserService {
     return userRepository.getTeacherStats(teacherId);
   }
 
+  async getTeacherDashboard(teacherId: number) {
+    return userRepository.getTeacherDashboard(teacherId);
+  }
+
+  async getStudentProgress(userId: number) {
+    return userRepository.getStudentProgress(userId);
+  }
+
   async getEnrolledStudents(teacherId: number, params: { page: number; limit: number; search?: string; level?: string }) {
     return userRepository.getEnrolledStudents(teacherId, params);
   }

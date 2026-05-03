@@ -162,12 +162,22 @@ const resetFilters = () => {
 
 const viewStudent = async (student: any) => {
   currentStudent.value = student
-  studentCourses.value = [
-    { title: 'HTML5 CSS3 Basic', progress: 85, completed: false },
-    { title: 'JavaScript Basic', progress: 100, completed: true },
-    { title: 'Vue.js Framework', progress: 45, completed: false }
-  ]
+  studentCourses.value = []
   detailDialogVisible.value = true
+  
+  try {
+    const res = await request.get(`/users/students/${student.id}/progress`)
+    if (res.success && res.data) {
+      studentCourses.value = res.data.map((c: any) => ({
+        title: c.course_title,
+        progress: c.progress || 0,
+        completed: c.completed || false
+      }))
+    }
+  } catch (error) {
+    console.error('获取学生学习进度失败:', error)
+    studentCourses.value = []
+  }
 }
 
 onMounted(fetchStudents)

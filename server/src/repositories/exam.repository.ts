@@ -131,13 +131,30 @@ export class ExamRepository {
     total_score: number; passing_score: number; start_time: string | null;
     end_time: string | null; allow_review: boolean; random_order: boolean;
   }) {
+    const formatDt = (v: string | null | undefined) => {
+      if (!v) return null;
+      const d = new Date(v);
+      if (isNaN(d.getTime())) return null;
+      return d.toISOString().slice(0, 19).replace('T', ' ');
+    };
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
       const [result] = await conn.execute<ResultSetHeader>(
         `INSERT INTO exams (title, description, teacher_id, duration, total_score, passing_score, start_time, end_time, status, allow_review, random_order, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, NOW(), NOW())`,
-        [data.title, data.description, data.teacher_id, data.duration, data.total_score, data.passing_score, data.start_time, data.end_time, data.allow_review, data.random_order]
+        [
+          data.title ?? '',
+          data.description ?? '',
+          data.teacher_id,
+          data.duration ?? 60,
+          data.total_score ?? 100,
+          data.passing_score ?? 60,
+          formatDt(data.start_time),
+          formatDt(data.end_time),
+          data.allow_review ?? true,
+          data.random_order ?? false
+        ]
       );
       await conn.commit();
       return result.insertId;
@@ -153,7 +170,7 @@ export class ExamRepository {
     for (const q of questions) {
       await pool.execute(
         'INSERT INTO exam_questions (exam_id, problem_id, score, `order`) VALUES (?, ?, ?, ?)',
-        [examId, q.problem_id, q.score, q.order]
+        [examId, q.problem_id, q.score ?? 0, q.order ?? 0]
       );
     }
   }

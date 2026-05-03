@@ -1,6 +1,5 @@
 <template>
-  <div class="teacher-dashboard">
-    <!-- 统计卡片 -->
+  <div class="teacher-dashboard" v-loading="loading">
     <el-row :gutter="20" class="stats-row">
       <el-col :span="6" v-for="stat in stats" :key="stat.title">
         <el-card shadow="hover" class="stat-card">
@@ -17,7 +16,6 @@
       </el-col>
     </el-row>
 
-    <!-- 快捷操作 -->
     <el-row :gutter="20" style="margin-top: 24px;">
       <el-col :span="16">
         <el-card shadow="hover">
@@ -57,20 +55,19 @@
           
           <div class="activity-list">
             <div v-for="(activity, index) in recentActivities" :key="index" class="activity-item">
-              <el-avatar :size="36">{{ activity.user.charAt(0) }}</el-avatar>
+              <el-avatar :size="36">{{ activity.user?.charAt(0) || '?' }}</el-avatar>
               <div class="activity-info">
                 <p><strong>{{ activity.user }}</strong> {{ activity.action }}</p>
-                <span class="time">{{ activity.time }}</span>
+                <span class="time">{{ formatTime(activity.time) }}</span>
               </div>
             </div>
             
-            <el-empty v-if="recentActivities.length === 0" description="暂无活动" />
+            <el-empty v-if="recentActivities.length === 0" description="暂无活动" :image-size="60" />
           </div>
         </el-card>
       </el-col>
     </el-row>
 
-    <!-- 课程概览 -->
     <el-card shadow="hover" style="margin-top: 24px;">
       <template #header>
         <div class="card-header">
@@ -91,11 +88,12 @@
         </el-table-column>
         <el-table-column label="操作" width="150" align="center">
           <template #default="{ row }">
-            <el-button size="small" text type="primary">编辑</el-button>
-            <el-button size="small" text type="danger">删除</el-button>
+            <el-button size="small" text type="primary" @click="$router.push(`/teacher/courses`)">编辑</el-button>
           </template>
         </el-table-column>
       </el-table>
+      
+      <el-empty v-if="courses.length === 0" description="暂无课程" />
     </el-card>
   </div>
 </template>
@@ -103,25 +101,54 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { Plus, Document, EditPen, DataAnalysis } from '@element-plus/icons-vue'
+import request from '@/api/request'
+import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
 
+dayjs.extend(relativeTime)
+
+const loading = ref(false)
 const stats = ref([
-  { title: '总课程数', value: '12', icon: 'Reading', color: '#0f766e' },
-  { title: '总学生数', value: '356', icon: 'User', color: '#059669' },
-  { title: '题目数量', value: '48', icon: 'Document', color: '#dc2626' },
-  { title: '平均评分', value: '4.7', icon: 'Star', color: '#d97706' }
+  { title: '总课程数', value: '0', icon: 'Reading', color: '#0f766e' },
+  { title: '总学生数', value: '0', icon: 'User', color: '#059669' },
+  { title: '题目数量', value: '0', icon: 'Document', color: '#dc2626' },
+  { title: '平均评分', value: '0', icon: 'Star', color: '#d97706' }
 ])
 
-const recentActivities = ref([
-  { user: '张三', action: '完成了 "JavaScript 基础"', time: '2分钟前' },
-  { user: '李四', action: '提交了 "Two Sum" 的代码', time: '5分钟前' },
-  { user: '王五', action: '注册了你的课程', time: '10分钟前' }
-])
+const recentActivities = ref<any[]>([])
+const courses = ref<any[]>([])
 
-const courses = ref([
-  { id: 1, title: 'JavaScript 基础教程', students: 128, status: 'published' },
-  { id: 2, title: 'Python 数据分析', students: 89, status: 'published' },
-  { id: 3, title: '算法与数据结构', students: 56, status: 'draft' }
-])
+const formatTime = (time: string | Date) => {
+  if (!time) return ''
+  return dayjs(time).fromNow()
+}
+
+const fetchDashboard = async () => {
+  loading.value = true
+  try {
+    const res = await request.get('/users/dashboard/teacher')
+    if (res.success && res.data) {
+      const data = res.data
+      stats.value = [
+        { title: '总课程数', value: String(data.totalCourses || 0), icon: 'Reading', color: '#0f766e' },
+        { title: '总学生数', value: String(data.totalStudents || 0), icon: 'User', color: '#059669' },
+        { title: '题目数量', value: String(data.totalProblems || 0), icon: 'Document', color: '#dc2626' },
+        { title: '平均评分', value: String(data.avgRating || 0), icon: 'Star', color: '#d97706' }
+      ]
+      recentActivities.value = data.recentActivities || []
+      courses.value = (data.courses || []).map((c: any) => ({
+        ...c,
+        students: c.students || 0
+      }))
+    }
+  } catch (error) {
+    console.error('获取仪表盘数据失败:', error)
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(fetchDashboard)
 </script>
 
 <style scoped lang="scss">

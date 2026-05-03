@@ -179,8 +179,8 @@ export class ExamService {
     end_time: string | null; allow_review: boolean; random_order: boolean;
     questions: { problem_id: number; score: number; order: number }[];
   }) {
-    if (!data.title || !data.description) {
-      throw new AppError('考试标题和描述不能为空', 400);
+    if (!data.title) {
+      throw new AppError('考试标题不能为空', 400);
     }
 
     const examId = await examRepository.create(data);

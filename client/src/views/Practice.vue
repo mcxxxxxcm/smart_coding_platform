@@ -321,49 +321,67 @@ const runCode = async () => {
   try {
     const res = await submissionApi.submit(selectedProblem.value!.id, language.value, code.value)
     
-    setTimeout(async () => {
+    const pollResult = async (attempt = 0) => {
+      if (attempt > 15) {
+        output.value = { status: 'error', message: '评测超时，请重试' }
+        running.value = false
+        return
+      }
+      
       try {
         const result = await submissionApi.getSubmission(res.data.submissionId)
+        
+        if (result.data.status === 'pending') {
+          setTimeout(() => pollResult(attempt + 1), 1000)
+          return
+        }
+        
         const testResults = result.data.test_results
+        const results = Array.isArray(testResults) ? testResults : (testResults?.results || [])
         
         let message = `状态：${getStatusText(result.data.status)}\n`
         message += `运行时间：${result.data.runtime}ms | 内存：${result.data.memory}MB\n\n`
         
-        if (testResults && testResults.message) {
-          message += `${testResults.message}\n\n`
-        }
-        
-        if (testResults && testResults.results && testResults.results.length > 0) {
-          const testResult = testResults.results[0]
-          message += `【你的输出】\n${testResult.output || '(无输出)'}\n\n`
+        if (results.length > 0) {
+          const firstResult = results[0]
+          message += `【你的输出】\n${firstResult.output || '(无输出)'}\n\n`
           
-          if (testResult.expected) {
-            message += `【期望输出】\n${testResult.expected}\n\n`
+          if (firstResult.expected) {
+            message += `【期望输出】\n${firstResult.expected}\n\n`
           }
           
           if (result.data.status === 'accepted') {
             message += `🎉 恭喜！测试通过！`
           } else {
             message += `❌ 测试未通过\n`
-            if (testResult.error) {
-              message += `错误信息：${testResult.error}`
+            if (firstResult.status === 'wrong_answer') {
+              message += `提示：输出结果与期望不符`
+            } else if (firstResult.status === 'runtime_error') {
+              message += `提示：程序运行时出错`
+            } else if (firstResult.status === 'time_limit_exceeded') {
+              message += `提示：程序运行超时`
             }
           }
+        } else if (result.data.error_message) {
+          message += `【错误信息】\n${result.data.error_message}`
         }
         
         output.value = {
           status: result.data.status === 'accepted' ? 'success' : 'error',
           message: message
         }
+        running.value = false
       } catch (error) {
         console.error('获取结果失败:', error)
         output.value = { status: 'error', message: '获取运行结果失败' }
+        running.value = false
       }
-    }, 2000)
+    }
+    
+    setTimeout(() => pollResult(), 1500)
   } catch (error) {
     console.error('运行失败:', error)
     output.value = { status: 'error', message: '运行失败，请检查代码' }
-  } finally {
     running.value = false
   }
 }
@@ -379,39 +397,63 @@ const submitCode = async () => {
     const res = await submissionApi.submit(selectedProblem.value!.id, language.value, code.value)
     ElMessage.success('提交成功，正在评测...')
     
-    setTimeout(async () => {
-      const result = await submissionApi.getSubmission(res.data.submissionId)
-      const testResults = result.data.test_results
-      
-      if (result.data.status === 'accepted') {
-        ElMessage.success('🎉 恭喜！通过所有测试用例！')
-      } else if (testResults && testResults.passedCount !== undefined) {
-        ElMessage.warning(`通过测试案例 ${testResults.passedCount}/${testResults.totalTestCases}，请继续努力`)
-      } else {
-        ElMessage.warning('未通过所有测试用例，请继续努力')
+    const pollResult = async (attempt = 0) => {
+      if (attempt > 15) {
+        ElMessage.error('评测超时，请重试')
+        submitting.value = false
+        return
       }
       
-      let message = `状态：${getStatusText(result.data.status)}\n`
-      message += `运行时间：${result.data.runtime}ms | 内存：${result.data.memory}MB\n\n`
-      
-      if (testResults && testResults.message) {
-        message += `${testResults.message}\n\n`
-      }
-      
-      if (testResults && testResults.results && testResults.results.length > 0) {
-        const testResult = testResults.results[0]
-        message += `【你的输出】\n${testResult.output || '(无输出)'}\n\n`
-        if (testResult.expected) {
-          message += `【期望输出】\n${testResult.expected}`
+      try {
+        const result = await submissionApi.getSubmission(res.data.submissionId)
+        
+        if (result.data.status === 'pending') {
+          setTimeout(() => pollResult(attempt + 1), 1000)
+          return
         }
+        
+        const testResults = result.data.test_results
+        const results = Array.isArray(testResults) ? testResults : (testResults?.results || [])
+        
+        if (result.data.status === 'accepted') {
+          ElMessage.success('🎉 恭喜！通过所有测试用例！')
+        } else {
+          const acceptedCount = results.filter((r: any) => r.status === 'accepted').length
+          if (acceptedCount > 0 && acceptedCount < results.length) {
+            ElMessage.warning(`通过测试案例 ${acceptedCount}/${results.length}，请继续努力`)
+          } else {
+            ElMessage.warning('未通过测试用例，请继续努力')
+          }
+        }
+        
+        let message = `状态：${getStatusText(result.data.status)}\n`
+        message += `运行时间：${result.data.runtime}ms | 内存：${result.data.memory}MB\n\n`
+        
+        if (results.length > 0) {
+          const firstResult = results[0]
+          message += `【你的输出】\n${firstResult.output || '(无输出)'}\n\n`
+          if (firstResult.expected) {
+            message += `【期望输出】\n${firstResult.expected}`
+          }
+        } else if (result.data.error_message) {
+          message += `【错误信息】\n${result.data.error_message}`
+        }
+        
+        output.value = {
+          status: result.data.status === 'accepted' ? 'success' : 'error',
+          message: message
+        }
+        submitting.value = false
+      } catch (error) {
+        console.error('获取结果失败:', error)
+        submitting.value = false
       }
-      
-      output.value = {
-        status: result.data.status === 'accepted' ? 'success' : 'error',
-        message: message
-      }
-    }, 3000)
-  } finally {
+    }
+    
+    setTimeout(() => pollResult(), 1500)
+  } catch (error) {
+    console.error('提交失败:', error)
+    ElMessage.error('提交失败')
     submitting.value = false
   }
 }

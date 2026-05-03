@@ -8,7 +8,7 @@ export class ExamController {
     const search = req.query.search as string;
     const status = req.query.status as string;
     const user = (req as any).user;
-    const teacherOnly = req.query.teacherOnly === 'true';
+    const teacherOnly = req.query.teacherOnly === 'true' || req.query.teacher_only === 'true';
 
     const result = await examService.listExams({
       page, limit, search, status,

@@ -252,6 +252,77 @@ export class UserRepository {
     await pool.execute('UPDATE users SET role = ? WHERE id = ?', [role, id]);
   }
 
+  async getTeacherDashboard(teacherId: number) {
+    const [courseRows] = await pool.execute<RowDataPacket[]>(
+      "SELECT id, title, status, (SELECT COUNT(*) FROM user_enrollments WHERE course_id = c.id) AS students FROM courses c WHERE c.teacher_id = ? ORDER BY c.created_at DESC",
+      [teacherId]
+    );
+    const totalCourses = courseRows.length;
+    const publishedCourses = courseRows.filter((r: RowDataPacket) => r.status === 'published').length;
+
+    const courseIds = courseRows.map((r: RowDataPacket) => r.id);
+    let totalStudents = 0;
+    let totalProblems = 0;
+    let avgRating = 0;
+
+    if (courseIds.length > 0) {
+      const placeholders = courseIds.map(() => '?').join(',');
+      const [studentResult] = await pool.execute<RowDataPacket[]>(
+        `SELECT COUNT(DISTINCT user_id) as count FROM user_enrollments WHERE course_id IN (${placeholders})`,
+        courseIds
+      );
+      totalStudents = studentResult[0]?.count || 0;
+
+      const [problemResult] = await pool.execute<RowDataPacket[]>(
+        `SELECT COUNT(*) as count FROM problems WHERE created_by = ?`,
+        [teacherId]
+      );
+      totalProblems = problemResult[0]?.count || 0;
+
+      const [ratingResult] = await pool.execute<RowDataPacket[]>(
+        `SELECT AVG(rating) as avg_rating FROM courses WHERE teacher_id = ? AND rating > 0`,
+        [teacherId]
+      );
+      avgRating = ratingResult[0]?.avg_rating ? Math.round(ratingResult[0].avg_rating * 10) / 10 : 0;
+    }
+
+    const [recentSubmissions] = await pool.query<RowDataPacket[]>(
+      `SELECT s.id, s.status, s.submitted_at, u.username, p.title as problem_title
+       FROM submissions s
+       JOIN users u ON s.user_id = u.id
+       JOIN problems p ON s.problem_id = p.id
+       WHERE p.created_by = ?
+       ORDER BY s.submitted_at DESC LIMIT 5`,
+      [teacherId]
+    );
+
+    const recentActivities = recentSubmissions.map((r: RowDataPacket) => ({
+      user: r.username,
+      action: `提交了 "${r.problem_title}" 的代码`,
+      time: r.submitted_at
+    }));
+
+    return {
+      totalCourses,
+      publishedCourses,
+      totalStudents,
+      totalProblems,
+      avgRating,
+      courses: courseRows,
+      recentActivities
+    };
+  }
+
+  async getStudentProgress(userId: number) {
+    const [courseProgress] = await pool.execute<RowDataPacket[]>(
+      `SELECT ue.course_id, c.title as course_title, ue.progress, ue.completed, ue.enrolled_at
+       FROM user_enrollments ue JOIN courses c ON ue.course_id = c.id
+       WHERE ue.user_id = ? ORDER BY ue.enrolled_at DESC`,
+      [userId]
+    );
+    return courseProgress;
+  }
+
   async countByRole() {
     const [rows] = await pool.execute<RowDataPacket[]>(
       'SELECT role, COUNT(*) as count FROM users GROUP BY role'

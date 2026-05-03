@@ -133,11 +133,12 @@ export const lessonCommentRepository = {
               ROUND(SUM(CASE WHEN s.status = 'accepted' THEN 1 ELSE 0 END) / COUNT(s.id) * 100, 1) AS pass_rate
        FROM problems p
        LEFT JOIN submissions s ON p.id = s.problem_id
+       WHERE p.created_by = ?
        GROUP BY p.id, p.title, p.difficulty
        HAVING total_submissions > 0
        ORDER BY pass_rate ASC
        LIMIT ${Math.max(1, Math.min(50, limit))}`,
-      []
+      [teacherId]
     );
     return rows;
   },

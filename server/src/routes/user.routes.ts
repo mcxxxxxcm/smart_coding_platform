@@ -9,6 +9,8 @@ const router = Router();
 const user = bindController(new UserController());
 
 router.get('/stats/teacher', authenticate, authorize('teacher'), user.getTeacherStats);
+router.get('/dashboard/teacher', authenticate, authorize('teacher'), user.getTeacherDashboard);
+router.get('/students/:id/progress', authenticate, authorize('teacher'), user.getStudentProgress);
 router.get('/enrolled-students', authenticate, authorize('teacher'), user.getEnrolledStudents);
 router.get('/top-students', authenticate, authorize('teacher'), user.getTopStudents);
 router.get('/', authenticate, authorize('teacher', 'admin'), user.getUsers);
