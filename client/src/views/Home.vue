@@ -171,72 +171,101 @@ onMounted(async () => {
 }
 
 .hero {
-  min-height: calc(100vh - 70px);
+  min-height: calc(100vh - 64px);
   display: flex;
   align-items: center;
-  padding: 60px 40px;
+  padding: 80px 40px;
   max-width: 1400px;
   margin: 0 auto;
-  gap: 60px;
+  gap: 80px;
+  position: relative;
 }
 
 .hero-content {
   flex: 1;
+  animation: fadeInUp 0.6s ease-out;
   
   h1 {
-    font-size: 3.5rem;
+    font-family: $font-display;
+    font-size: 3.75rem;
     font-weight: 800;
-    line-height: 1.2;
-    margin-bottom: 20px;
+    line-height: 1.15;
+    margin-bottom: 24px;
     color: $text-primary;
+    letter-spacing: -0.03em;
   }
   
   p {
-    font-size: 1.25rem;
+    font-size: 1.2rem;
     color: $text-secondary;
-    margin-bottom: 30px;
-    max-width: 500px;
+    margin-bottom: 36px;
+    max-width: 480px;
+    line-height: 1.7;
   }
 }
 
 .hero-buttons {
   display: flex;
-  gap: 16px;
-  margin-bottom: 50px;
+  gap: 14px;
+  margin-bottom: 56px;
+  
+  .el-button {
+    height: 48px;
+    padding: 0 32px;
+    font-weight: 600;
+    font-size: 1rem;
+    border-radius: $radius-sm;
+  }
+  
+  .el-button--default {
+    border: 1px solid $border-color;
+    color: $text-secondary;
+    
+    &:hover {
+      border-color: $primary-color;
+      color: $primary-color;
+    }
+  }
 }
 
 .hero-stats {
   display: flex;
-  gap: 50px;
+  gap: 48px;
+  padding-top: 32px;
+  border-top: 1px solid $border-color;
 }
 
 .stat-item {
-  text-align: center;
+  text-align: left;
 }
 
 .stat-number {
   display: block;
-  font-size: 2.5rem;
+  font-family: $font-display;
+  font-size: 2rem;
   font-weight: 700;
   color: $primary-color;
+  letter-spacing: -0.02em;
 }
 
 .stat-label {
-  color: $text-secondary;
-  font-size: 0.95rem;
+  color: $text-muted;
+  font-size: 0.85rem;
+  margin-top: 2px;
 }
 
 .hero-image {
   flex: 1;
   display: flex;
   justify-content: center;
+  animation: fadeInUp 0.6s ease-out 0.15s both;
 }
 
 .code-window {
   background: $code-bg;
   border-radius: $radius-lg;
   overflow: hidden;
-  box-shadow: $shadow-xl;
+  box-shadow: $shadow-xl, $shadow-glow;
   width: 100%;
   max-width: 500px;
   border: 1px solid #45475a;
@@ -244,7 +273,7 @@ onMounted(async () => {
 
 .code-header {
   background: $code-header;
-  padding: 12px 16px;
+  padding: 14px 18px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -263,14 +292,15 @@ onMounted(async () => {
 .file-name {
   margin-left: 12px;
   color: #6c7086;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  font-family: $font-mono;
 }
 
 .code-content {
-  padding: 20px;
-  font-family: 'Fira Code', 'Consolas', monospace;
-  font-size: 0.95rem;
-  line-height: 1.8;
+  padding: 24px;
+  font-family: $font-mono;
+  font-size: 0.9rem;
+  line-height: 1.9;
   color: $code-text;
   overflow-x: auto;
   
@@ -283,20 +313,22 @@ onMounted(async () => {
 }
 
 .courses-section {
-  padding: 80px 40px;
+  padding: 100px 40px;
   max-width: 1400px;
   margin: 0 auto;
 }
 
 .section-header {
   text-align: center;
-  margin-bottom: 50px;
+  margin-bottom: 56px;
   
   h2 {
+    font-family: $font-display;
     font-size: 2.5rem;
     font-weight: 700;
-    margin-bottom: 15px;
+    margin-bottom: 14px;
     color: $text-primary;
+    letter-spacing: -0.025em;
   }
   
   p {
@@ -307,8 +339,8 @@ onMounted(async () => {
 
 .course-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 30px;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 24px;
 }
 
 .course-card {
@@ -316,22 +348,34 @@ onMounted(async () => {
   border-radius: $radius-lg;
   overflow: hidden;
   border: 1px solid $border-color;
-  transition: all 0.2s ease;
+  transition: all $transition-base;
   cursor: pointer;
   
   &:hover {
     border-color: $primary-border;
-    box-shadow: $shadow-md;
-    transform: translateY(-2px);
+    box-shadow: $shadow-lg;
+    transform: translateY(-4px);
   }
 }
 
 .course-image {
-  height: 140px;
+  height: 160px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
+  position: relative;
+  overflow: hidden;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 40px;
+    background: linear-gradient(to top, rgba(0,0,0,0.06), transparent);
+  }
   
   &.frontend { background: $color-frontend; }
   &.backend { background: $color-backend; }
@@ -347,9 +391,10 @@ onMounted(async () => {
   display: inline-block;
   padding: 4px 12px;
   border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 500;
+  font-size: 0.75rem;
+  font-weight: 600;
   margin-bottom: 12px;
+  letter-spacing: 0.02em;
   
   &.beginner { background: $color-easy-bg; color: $color-easy-text; }
   &.intermediate { background: $color-medium-bg; color: $color-medium-text; }
@@ -357,27 +402,31 @@ onMounted(async () => {
 }
 
 .course-info h3 {
+  font-family: $font-display;
   font-size: 1.2rem;
   margin-bottom: 10px;
   color: $text-primary;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .course-info p {
   color: $text-secondary;
-  font-size: 0.95rem;
-  margin-bottom: 15px;
+  font-size: 0.9rem;
+  margin-bottom: 16px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  line-height: 1.6;
 }
 
 .course-meta {
   display: flex;
   gap: 20px;
-  color: $text-secondary;
-  font-size: 0.9rem;
-  margin-bottom: 15px;
+  color: $text-muted;
+  font-size: 0.85rem;
+  margin-bottom: 18px;
   
   span {
     display: flex;
@@ -388,10 +437,12 @@ onMounted(async () => {
 
 .start-btn {
   width: 100%;
+  border-radius: $radius-sm;
+  font-weight: 600;
 }
 
 .features-section {
-  padding: 80px 40px;
+  padding: 100px 40px;
   background: white;
   border-top: 1px solid $border-color;
 }
@@ -400,26 +451,28 @@ onMounted(async () => {
   max-width: 1200px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 30px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 24px;
 }
 
 .feature-card {
   text-align: center;
-  padding: 30px;
+  padding: 40px 28px;
   border-radius: $radius-lg;
-  transition: all 0.2s ease;
+  transition: all $transition-base;
+  border: 1px solid transparent;
   
   &:hover {
     background: $primary-light;
-    transform: translateY(-2px);
+    border-color: $primary-border;
+    transform: translateY(-4px);
   }
 }
 
 .feature-icon {
-  width: 70px;
-  height: 70px;
-  margin: 0 auto 20px;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 24px;
   background: $primary-light;
   border: 1px solid $primary-border;
   border-radius: $radius-md;
@@ -430,13 +483,17 @@ onMounted(async () => {
 }
 
 .feature-card h3 {
-  font-size: 1.3rem;
+  font-family: $font-display;
+  font-size: 1.2rem;
   margin-bottom: 10px;
   color: $text-primary;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .feature-card p {
   color: $text-secondary;
-  line-height: 1.6;
+  line-height: 1.7;
+  font-size: 0.9rem;
 }
 </style>

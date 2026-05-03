@@ -549,7 +549,7 @@ onMounted(fetchProblems)
 @use '@/styles/variables.scss' as *;
 
 .practice-page {
-  height: calc(100vh - 60px);
+  height: calc(100vh - 64px);
   overflow: hidden;
   background: $surface-color;
   position: relative;
@@ -568,7 +568,8 @@ onMounted(fetchProblems)
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  transition: width 0.3s ease, min-width 0.3s ease;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 1px 0 0 $border-color;
   
   &.collapsed {
     width: 60px;
@@ -588,19 +589,21 @@ onMounted(fetchProblems)
 }
 
 .sidebar-header {
-  padding: 12px;
+  padding: 14px 12px;
   border-bottom: 1px solid $border-color;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 8px;
+  background: white;
   
   h3 {
     margin: 0;
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 700;
     color: $text-primary;
     white-space: nowrap;
+    letter-spacing: -0.01em;
   }
   
   .header-controls {
@@ -616,13 +619,14 @@ onMounted(fetchProblems)
 }
 
 .problem-item {
-  padding: 10px 12px;
+  padding: 10px 14px;
   border-bottom: 1px solid $border-light;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 8px;
-  transition: all 0.15s ease;
+  transition: all $transition-fast;
+  position: relative;
   
   &:hover {
     background: $primary-light;
@@ -631,6 +635,11 @@ onMounted(fetchProblems)
   &.active {
     background: $primary-light;
     border-left: 3px solid $primary-color;
+    
+    .problem-title {
+      color: $primary-color;
+      font-weight: 600;
+    }
   }
 }
 
@@ -688,21 +697,22 @@ onMounted(fetchProblems)
 }
 
 .problem-header {
-  padding: 12px 20px;
+  padding: 14px 24px;
   border-bottom: 1px solid $border-color;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: $surface-color;
+  background: white;
   
   h2 {
     margin: 0;
     font-size: 16px;
-    font-weight: 600;
+    font-weight: 700;
     color: $text-primary;
     display: flex;
     align-items: center;
     gap: 10px;
+    letter-spacing: -0.01em;
     
     .difficulty-tag {
       font-size: 12px;
@@ -714,6 +724,15 @@ onMounted(fetchProblems)
   display: flex;
   align-items: center;
   gap: 10px;
+  
+  .el-button--primary {
+    transition: all $transition-base;
+    
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(15, 118, 110, 0.3);
+    }
+  }
 }
 
 .content-split {
@@ -1090,9 +1109,9 @@ onMounted(fetchProblems)
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  box-shadow: -2px 0 8px rgba(0,0,0,0.05);
+  box-shadow: -4px 0 16px rgba(0,0,0,0.06);
   transform: translateX(100%);
-  transition: transform 0.3s ease;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   position: absolute;
   right: 0;
   top: 0;
@@ -1110,12 +1129,11 @@ onMounted(fetchProblems)
   
   .ai-header {
     padding: 16px 20px;
-    background: $primary-color;
+    background: linear-gradient(135deg, #0f766e, #0d6560);
     color: white;
     display: flex;
     align-items: center;
     gap: 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     
     .ai-icon {
       font-size: 20px;
@@ -1123,23 +1141,25 @@ onMounted(fetchProblems)
     
     .ai-title {
       flex: 1;
-      font-size: 16px;
-      font-weight: 600;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
     }
     
     .el-button {
-      background: rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.15);
       border: none;
       color: white;
+      transition: all $transition-fast;
       
       &:hover {
-        background: rgba(255,255,255,0.3);
+        background: rgba(255,255,255,0.25);
       }
     }
   }
   
   .ai-actions {
-    padding: 12px 16px;
+    padding: 14px 16px;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -1154,10 +1174,14 @@ onMounted(fetchProblems)
       background: $primary-light;
       border-color: $primary-border;
       color: $primary-color;
+      font-weight: 500;
+      border-radius: $radius-sm;
+      transition: all $transition-fast;
       
       &:hover {
         background: rgba(15, 118, 110, 0.12);
         border-color: $primary-color;
+        transform: translateX(2px);
       }
       
       .el-icon {

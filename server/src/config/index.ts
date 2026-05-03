@@ -26,7 +26,7 @@ export const config = {
   },
   
   deepseek: {
-    apiKey: process.env.DEEPSEEK_API_KEY || '',
-    baseUrl: process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1'
+    apiKey: process.env.DEEPSEEK_API_KEY || process.env.GLM_API_KEY || '',
+    baseUrl: process.env.DEEPSEEK_BASE_URL || 'https://open.bigmodel.cn/api/paas/v4'
   }
 };

@@ -3,7 +3,7 @@ import { config } from '../config';
 
 export class DeepSeekService {
   private client: OpenAI;
-  private model: string = 'deepseek-chat';
+  private model: string = process.env.GLM_MODEL || process.env.DEEPSEEK_MODEL || 'glm-4-flash';
 
   constructor() {
     this.client = new OpenAI({

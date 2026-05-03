@@ -2,8 +2,9 @@
   <div class="community-page page-container">
     <div class="container">
       <div class="page-header">
-        <h1>学习社区</h1>
-        <p>与志同道合的伙伴一起学习成长</p>
+        <div class="header-badge">学习社区</div>
+        <h1>交流与分享</h1>
+        <p>与志同道合的伙伴一起学习成长，分享你的编程心得</p>
       </div>
       
       <div class="community-content">
@@ -38,29 +39,33 @@
               @click="viewPost(post.id)"
             >
               <div class="post-header">
-                <el-avatar :size="40" :src="post.author_avatar || undefined">
+                <el-avatar :size="40" :src="post.author_avatar || undefined" class="post-avatar">
                   {{ post.author_name ? post.author_name.charAt(0) : '?' }}
                 </el-avatar>
                 <div class="post-meta">
                   <span class="author">{{ post.author_name || '未知' }}</span>
                   <span class="time">{{ post.created_at ? formatTime(post.created_at) : '' }}</span>
                 </div>
-                <el-tag v-if="post.is_pinned" type="danger" size="small" style="margin-right: 8px">
-                  <el-icon><Top /></el-icon> 置顶
-                </el-tag>
-                <span class="category-tag" :class="post.category || ''">{{ getCategoryLabel(post.category) }}</span>
+                <div class="post-badges">
+                  <el-tag v-if="post.is_pinned" type="danger" size="small" effect="dark" round>
+                    <el-icon><Top /></el-icon> 置顶
+                  </el-tag>
+                  <span class="category-tag" :class="post.category || ''">{{ getCategoryLabel(post.category) }}</span>
+                </div>
               </div>
               <h3 class="post-title">{{ post.title || '无标题' }}</h3>
               <p class="post-content">{{ truncate(post.content || '', 150) }}</p>
               <div class="post-footer">
-                <span><el-icon><View /></el-icon> {{ post.view_count || 0 }}</span>
-                <span><el-icon><ChatDotRound /></el-icon> {{ post.comment_count || 0 }}</span>
-                <span class="like-stat">
-                  <svg class="like-icon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
-                    <path d="M9 21h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2zM9 9l4.34-4.34L12 10h9v2l-3 7H9V9zM1 9h4v12H1z"/>
-                  </svg>
-                  {{ post.like_count || 0 }}
-                </span>
+                <div class="post-stats">
+                  <span><el-icon><View /></el-icon> {{ post.view_count || 0 }}</span>
+                  <span><el-icon><ChatDotRound /></el-icon> {{ post.comment_count || 0 }}</span>
+                  <span class="like-stat">
+                    <svg class="like-icon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                      <path d="M9 21h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2zM9 9l4.34-4.34L12 10h9v2l-3 7H9V9zM1 9h4v12H1z"/>
+                    </svg>
+                    {{ post.like_count || 0 }}
+                  </span>
+                </div>
                 <div v-if="canModerate" class="post-actions" @click.stop>
                   <el-button
                     :type="post.is_pinned ? 'warning' : 'info'"
@@ -93,7 +98,7 @@
       </div>
     </div>
     
-    <el-dialog v-model="showCreateDialog" title="发布帖子" width="600px">
+    <el-dialog v-model="showCreateDialog" title="发布帖子" width="600px" class="create-dialog">
       <el-form ref="formRef" :model="postForm" :rules="postRules">
         <el-form-item prop="title">
           <el-input v-model="postForm.title" placeholder="标题" />
@@ -128,7 +133,6 @@ import type { Post } from '@/types'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 
-// 扩展dayjs的相对时间功能
 dayjs.extend(relativeTime)
 
 const router = useRouter()
@@ -158,7 +162,6 @@ const pagination = reactive({
   total: 0
 })
 
-// 排序帖子：置顶在前
 const sortedPosts = computed(() => {
   return [...posts.value].sort((a, b) => {
     if (a.is_pinned && !b.is_pinned) return -1
@@ -254,12 +257,10 @@ const createPost = async () => {
     ElMessage.success('发布成功')
     showCreateDialog.value = false
     
-    // 重置表单
     postForm.title = ''
     postForm.category = ''
     postForm.content = ''
     
-    // 跳转到新发布的帖子
     router.push(`/community/posts/${res.data.id}`)
   } catch (error) {
     console.error('发布帖子失败:', error)
@@ -293,50 +294,82 @@ onMounted(fetchPosts)
 @use '@/styles/variables.scss' as *;
 
 .community-page {
-  padding: 40px 0;
+  padding: 40px 0 80px;
   min-height: calc(100vh - 70px);
 }
 
 .page-header {
   text-align: center;
-  margin-bottom: 40px;
+  margin-bottom: 48px;
+  
+  .header-badge {
+    display: inline-block;
+    padding: 6px 16px;
+    background: $primary-light;
+    color: $primary-color;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+    border: 1px solid $primary-border;
+  }
   
   h1 {
-    font-size: 2rem;
-    font-weight: 700;
-    margin-bottom: 10px;
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin-bottom: 12px;
+    color: $text-primary;
+    letter-spacing: -0.03em;
   }
   
   p {
     color: $text-secondary;
+    font-size: 1.1rem;
+    max-width: 480px;
+    margin: 0 auto;
+    line-height: 1.7;
   }
 }
 
 .community-content {
   display: flex;
-  gap: 30px;
+  gap: 28px;
 }
 
 .sidebar {
-  width: 200px;
+  width: 220px;
   flex-shrink: 0;
 }
 
 .create-btn {
   width: 100%;
+  height: 44px;
   margin-bottom: 20px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  border-radius: $radius-sm;
+  transition: all $transition-base;
+  
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(15, 118, 110, 0.3);
+  }
 }
 
 .category-list {
   background: white;
   border-radius: $radius-md;
   padding: 16px;
-  box-shadow: $shadow-sm;
+  box-shadow: $shadow-card;
+  border: 1px solid $border-color;
   
   h4 {
-    font-size: 0.9rem;
-    color: $text-secondary;
+    font-size: 0.8rem;
+    color: $text-muted;
     margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
   }
 }
 
@@ -347,20 +380,26 @@ onMounted(fetchPosts)
   padding: 10px 12px;
   border-radius: $radius-sm;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all $transition-fast;
+  font-size: 0.9rem;
+  color: $text-secondary;
+  font-weight: 500;
   
   &:hover {
     background: $primary-light;
+    color: $primary-color;
   }
   
   &.active {
     background: $primary-light;
     color: $primary-color;
+    font-weight: 600;
   }
 }
 
 .posts-main {
   flex: 1;
+  min-width: 0;
 }
 
 .posts-list {
@@ -372,19 +411,21 @@ onMounted(fetchPosts)
 .post-card {
   background: white;
   border-radius: $radius-md;
-  padding: 20px;
-  box-shadow: $shadow-sm;
+  padding: 24px;
+  box-shadow: $shadow-card;
+  border: 1px solid $border-color;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all $transition-base;
   
   &:hover {
-    box-shadow: $shadow-md;
+    box-shadow: $shadow-card-hover;
+    border-color: $primary-border;
     transform: translateY(-2px);
   }
   
   &.pinned-post {
     border-left: 3px solid #dc2626;
-    background: $color-hard-bg;
+    background: linear-gradient(to right, rgba(254, 242, 242, 0.5), white);
   }
 }
 
@@ -392,29 +433,40 @@ onMounted(fetchPosts)
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
+}
+
+.post-avatar {
+  border: 2px solid $primary-border;
 }
 
 .post-meta {
   flex: 1;
   
   .author {
-    font-weight: 500;
+    font-weight: 600;
     color: $text-primary;
     display: block;
+    font-size: 0.9rem;
   }
   
   .time {
-    font-size: 0.85rem;
-    color: $text-secondary;
+    font-size: 0.8rem;
+    color: $text-muted;
   }
+}
+
+.post-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .category-tag {
   padding: 4px 12px;
   border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 500;
+  font-size: 0.75rem;
+  font-weight: 600;
   
   &.question { background: #dbeafe; color: #1e40af; }
   &.article { background: #dcfce7; color: #166534; }
@@ -425,36 +477,45 @@ onMounted(fetchPosts)
   font-size: 1.1rem;
   margin-bottom: 8px;
   color: $text-primary;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.4;
 }
 
 .post-content {
   color: $text-secondary;
-  font-size: 0.95rem;
-  line-height: 1.6;
-  margin-bottom: 12px;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  margin-bottom: 16px;
 }
 
 .post-footer {
   display: flex;
-  gap: 20px;
-  color: $text-secondary;
-  font-size: 0.9rem;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.post-stats {
+  display: flex;
+  gap: 18px;
+  color: $text-muted;
+  font-size: 0.85rem;
   
   span {
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
   }
   
   .like-stat {
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
   }
   
   .like-icon {
     flex-shrink: 0;
-    color: $text-secondary;
+    color: $text-muted;
   }
 }
 
@@ -466,6 +527,6 @@ onMounted(fetchPosts)
 .pagination {
   display: flex;
   justify-content: center;
-  margin-top: 30px;
+  margin-top: 36px;
 }
 </style>

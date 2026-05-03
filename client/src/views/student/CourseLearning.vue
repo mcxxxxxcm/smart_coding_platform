@@ -163,6 +163,11 @@
               <div v-if="!loadingComments && lessonComments.length === 0" class="empty-comments">
                 <el-empty description="暂无评论，快来发表第一条评论吧" />
               </div>
+
+              <div v-if="aiWaitingCommentId" class="ai-thinking-hint">
+                <el-icon class="thinking-icon"><Loading /></el-icon>
+                <span>AI助手正在思考中，请稍候...</span>
+              </div>
             </div>
           </div>
           <div v-else class="no-lesson-hint">
@@ -204,7 +209,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { VideoPlay, VideoPause, ChatDotRound, MagicStick } from '@element-plus/icons-vue'
+import { VideoPlay, VideoPause, ChatDotRound, MagicStick, Loading } from '@element-plus/icons-vue'
 import { ElMessage, ElEmpty } from 'element-plus'
 import { courseApi } from '@/api/course'
 import { lessonCommentApi, type LessonComment } from '@/api/lesson-comment'
@@ -238,6 +243,8 @@ const showAiHint = ref(false)
 const showReplyDialog = ref(false)
 const replyContent = ref('')
 const replyTarget = ref<LessonComment | null>(null)
+const aiWaitingCommentId = ref<number | null>(null)
+const aiPollingTimer = ref<ReturnType<typeof setInterval> | null>(null)
 
 const sampleVideos = [
   'https://www.w3schools.com/html/mov_bbb.mp4',
@@ -296,6 +303,42 @@ const fetchComments = async () => {
   }
 }
 
+const stopAiPolling = () => {
+  if (aiPollingTimer.value) {
+    clearInterval(aiPollingTimer.value)
+    aiPollingTimer.value = null
+  }
+  aiWaitingCommentId.value = null
+}
+
+const startAiPolling = (parentCommentId: number) => {
+  stopAiPolling()
+  aiWaitingCommentId.value = parentCommentId
+  let attempts = 0
+  const maxAttempts = 30
+
+  aiPollingTimer.value = setInterval(async () => {
+    attempts++
+    if (attempts > maxAttempts) {
+      stopAiPolling()
+      return
+    }
+    try {
+      const res = await lessonCommentApi.getComments(currentLesson.value!.id, { page: 1, limit: 100 })
+      const newComments = res.data || []
+      const aiReply = newComments.find(
+        (c: LessonComment) => c.parent_id === parentCommentId && c.is_ai_reply
+      )
+      if (aiReply) {
+        lessonComments.value = newComments
+        stopAiPolling()
+      }
+    } catch {
+      // ignore polling errors
+    }
+  }, 3000)
+}
+
 const submitComment = async () => {
   if (!userStore.isLoggedIn) {
     ElMessage.warning('请先登录')
@@ -303,15 +346,22 @@ const submitComment = async () => {
   }
   if (!currentLesson.value || !newComment.value.trim()) return
 
+  const isAiQuestion = newComment.value.includes('@AI助手') || newComment.value.includes('@AI')
   submitting.value = true
   try {
-    await lessonCommentApi.createComment(currentLesson.value.id, {
+    const res = await lessonCommentApi.createComment(currentLesson.value.id, {
       content: newComment.value.trim()
     })
-    ElMessage.success('评论发表成功')
     newComment.value = ''
     showAiHint.value = false
     await fetchComments()
+
+    if (isAiQuestion && res.data?.id) {
+      ElMessage.success('评论发表成功，AI助手正在思考中...')
+      startAiPolling(res.data.id)
+    } else {
+      ElMessage.success('评论发表成功')
+    }
   } catch (error) {
     console.error('发表评论失败:', error)
     ElMessage.error('发表评论失败')
@@ -333,17 +383,24 @@ const submitReply = async () => {
   }
   if (!currentLesson.value || !replyContent.value.trim() || !replyTarget.value) return
 
+  const isAiQuestion = replyContent.value.includes('@AI助手') || replyContent.value.includes('@AI')
   submitting.value = true
   try {
-    await lessonCommentApi.createComment(currentLesson.value.id, {
+    const res = await lessonCommentApi.createComment(currentLesson.value.id, {
       content: replyContent.value.trim(),
       parent_id: replyTarget.value.id
     })
-    ElMessage.success('回复成功')
     showReplyDialog.value = false
     replyContent.value = ''
     replyTarget.value = null
     await fetchComments()
+
+    if (isAiQuestion && res.data?.id) {
+      ElMessage.success('回复成功，AI助手正在思考中...')
+      startAiPolling(res.data.id)
+    } else {
+      ElMessage.success('回复成功')
+    }
   } catch (error) {
     console.error('回复失败:', error)
     ElMessage.error('回复失败')
@@ -509,6 +566,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  stopAiPolling()
   if (videoPlayer.value) {
     videoPlayer.value.pause()
   }
@@ -528,8 +586,9 @@ onUnmounted(() => {
   
   .video-section {
     background: #000;
-    border-radius: 8px;
+    border-radius: $radius-lg;
     overflow: hidden;
+    box-shadow: $shadow-card;
     
     .video-player {
       width: 100%;
@@ -543,14 +602,15 @@ onUnmounted(() => {
     }
     
     .video-info {
-      padding: 20px;
+      padding: 24px;
       background: #fff;
       
       .video-title {
         margin: 0 0 12px 0;
         font-size: 20px;
-        font-weight: 600;
+        font-weight: 700;
         color: $text-primary;
+        letter-spacing: -0.01em;
       }
       
       .video-meta {
@@ -571,11 +631,30 @@ onUnmounted(() => {
   .content-section {
     .content-tabs {
       background: #fff;
-      border-radius: 8px;
-      padding: 20px;
+      border-radius: $radius-lg;
+      padding: 24px;
+      box-shadow: $shadow-card;
+      border: 1px solid $border-color;
       
       :deep(.el-tabs__header) {
         margin-bottom: 20px;
+      }
+      
+      :deep(.el-tabs__item) {
+        font-weight: 600;
+        font-size: 0.95rem;
+      }
+      
+      :deep(.el-tabs__active-bar) {
+        background-color: $primary-color;
+      }
+      
+      :deep(.el-tabs__item.is-active) {
+        color: $primary-color;
+      }
+      
+      :deep(.el-tabs__item:hover) {
+        color: $primary-color;
       }
     }
     
@@ -691,6 +770,21 @@ onUnmounted(() => {
 }
 
 .comment-input-area {
+  :deep(.el-textarea__inner) {
+    border-radius: $radius-sm;
+    border-color: $border-color;
+    transition: all $transition-base;
+    
+    &:hover {
+      border-color: $primary-border;
+    }
+    
+    &:focus {
+      border-color: $primary-color;
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+    }
+  }
+  
   .comment-input-footer {
     display: flex;
     justify-content: space-between;
@@ -703,6 +797,7 @@ onUnmounted(() => {
       gap: 6px;
       color: $primary-color;
       font-size: 13px;
+      font-weight: 500;
       
       .el-icon {
         font-size: 16px;
@@ -877,6 +972,30 @@ onUnmounted(() => {
 .empty-comments, .no-lesson-hint {
   padding: 40px 0;
   text-align: center;
+}
+
+.ai-thinking-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  background: $primary-light;
+  border-radius: $radius-md;
+  color: $primary-color;
+  font-size: 14px;
+  font-weight: 500;
+  margin-top: 12px;
+  border: 1px solid $primary-border;
+  
+  .thinking-icon {
+    animation: spin 1s linear infinite;
+  }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .comment-badge {

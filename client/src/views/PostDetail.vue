@@ -5,7 +5,7 @@
         <header class="post-header">
           <h1>{{ post.title }}</h1>
           <div class="post-meta">
-            <el-avatar :size="40" :src="post.author_avatar || undefined">
+            <el-avatar :size="44" :src="post.author_avatar || undefined" class="author-avatar">
               {{ post.author_name?.charAt(0) }}
             </el-avatar>
             <div class="author-info">
@@ -22,7 +22,7 @@
         
         <footer class="post-footer">
           <div class="actions">
-            <el-button :type="liked ? 'primary' : 'default'" @click="toggleLike">
+            <el-button :type="liked ? 'primary' : 'default'" round @click="toggleLike">
               <el-icon><Star /></el-icon>
               {{ liked ? '已点赞' : '点赞' }} ({{ post.like_count }})
             </el-button>
@@ -31,7 +31,9 @@
       </article>
       
       <section class="comments-section" v-if="post">
-        <h3>评论 ({{ post.comment_count }})</h3>
+        <div class="section-header">
+          <h3>评论 ({{ post.comment_count }})</h3>
+        </div>
         
         <div class="comment-form">
           <el-input
@@ -40,7 +42,9 @@
             :rows="3"
             placeholder="写下你的评论..."
           />
-          <el-button type="primary" @click="submitComment" :loading="submitting">发表评论</el-button>
+          <div class="comment-form-footer">
+            <el-button type="primary" @click="submitComment" :loading="submitting" round>发表评论</el-button>
+          </div>
         </div>
         
         <div class="comments-list">
@@ -170,7 +174,7 @@ onMounted(fetchPost)
 @use '@/styles/variables.scss' as *;
 
 .post-detail-page {
-  padding: 40px 0;
+  padding: 40px 0 80px;
   min-height: calc(100vh - 70px);
 }
 
@@ -178,16 +182,20 @@ onMounted(fetchPost)
   background: white;
   border-radius: $radius-lg;
   padding: 40px;
-  margin-bottom: 30px;
-  box-shadow: $shadow-md;
+  margin-bottom: 28px;
+  box-shadow: $shadow-card;
+  border: 1px solid $border-color;
 }
 
 .post-header {
-  margin-bottom: 30px;
+  margin-bottom: 32px;
   
   h1 {
-    font-size: 1.8rem;
+    font-size: 1.75rem;
     margin-bottom: 20px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.4;
   }
 }
 
@@ -197,25 +205,31 @@ onMounted(fetchPost)
   gap: 12px;
 }
 
+.author-avatar {
+  border: 2px solid $primary-border;
+}
+
 .author-info {
   flex: 1;
   
   .author-name {
-    font-weight: 500;
+    font-weight: 600;
     display: block;
+    font-size: 0.95rem;
+    color: $text-primary;
   }
   
   .post-time {
-    font-size: 0.9rem;
-    color: $text-secondary;
+    font-size: 0.85rem;
+    color: $text-muted;
   }
 }
 
 .category-tag {
   padding: 4px 12px;
   border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 500;
+  font-size: 0.75rem;
+  font-weight: 600;
   
   &.question { background: #dbeafe; color: #1e40af; }
   &.article { background: #dcfce7; color: #166534; }
@@ -223,34 +237,66 @@ onMounted(fetchPost)
 }
 
 .post-content {
-  font-size: 1.1rem;
-  line-height: 1.8;
+  font-size: 1.05rem;
+  line-height: 1.9;
   color: $text-primary;
-  margin-bottom: 30px;
+  margin-bottom: 32px;
 }
 
 .post-footer {
   border-top: 1px solid $border-color;
   padding-top: 20px;
+  
+  .el-button {
+    transition: all $transition-base;
+    
+    &:hover {
+      transform: translateY(-1px);
+    }
+  }
 }
 
 .comments-section {
   background: white;
   border-radius: $radius-lg;
-  padding: 30px;
-  box-shadow: $shadow-md;
+  padding: 32px;
+  box-shadow: $shadow-card;
+  border: 1px solid $border-color;
   
-  h3 {
-    margin-bottom: 20px;
-    font-size: 1.2rem;
+  .section-header {
+    margin-bottom: 24px;
+    
+    h3 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: $text-primary;
+      letter-spacing: -0.01em;
+    }
   }
 }
 
 .comment-form {
-  margin-bottom: 30px;
+  margin-bottom: 32px;
   
-  .el-button {
-    margin-top: 10px;
+  :deep(.el-textarea__inner) {
+    border-radius: $radius-sm;
+    border-color: $border-color;
+    transition: all $transition-base;
+    
+    &:hover {
+      border-color: $primary-border;
+    }
+    
+    &:focus {
+      border-color: $primary-color;
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+    }
+  }
+  
+  .comment-form-footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 12px;
   }
 }
 
@@ -263,6 +309,13 @@ onMounted(fetchPost)
 .comment-item {
   display: flex;
   gap: 12px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid $border-light;
+  
+  &:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
 }
 
 .comment-content {
@@ -272,19 +325,22 @@ onMounted(fetchPost)
     margin-bottom: 8px;
     
     .author {
-      font-weight: 500;
+      font-weight: 600;
       margin-right: 10px;
+      color: $text-primary;
+      font-size: 0.9rem;
     }
     
     .time {
-      font-size: 0.85rem;
-      color: $text-secondary;
+      font-size: 0.8rem;
+      color: $text-muted;
     }
   }
   
   p {
     color: $text-primary;
-    line-height: 1.6;
+    line-height: 1.7;
+    font-size: 0.95rem;
   }
 }
 </style>
