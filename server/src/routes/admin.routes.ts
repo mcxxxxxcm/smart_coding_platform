@@ -33,7 +33,7 @@ router.put('/courses/:id/review',
 router.get('/problems', admin.getProblemsForReview);
 router.put('/problems/:id/review',
   validate([
-    body('status').isIn(['published', 'archived']).withMessage('无效的审核状态')
+    body('status').isIn(['published', 'archived', 'rejected']).withMessage('无效的审核状态')
   ]),
   admin.reviewProblem
 );

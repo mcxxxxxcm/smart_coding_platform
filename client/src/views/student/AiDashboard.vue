@@ -41,8 +41,12 @@
                 <h4>本周学习计划</h4>
                 <p class="ai-text">{{ learningPath.weekly_plan }}</p>
               </div>
+              <el-button type="primary" text @click="loadLearningPath" :loading="pathLoading">重新生成</el-button>
             </template>
-            <el-button v-if="!pathLoading" type="primary" text @click="loadLearningPath" :loading="pathLoading">重新生成</el-button>
+            <div v-else class="ai-placeholder">
+              <p>AI 将根据你的学习数据生成个性化学习路径</p>
+              <el-button type="primary" @click="loadLearningPath" :loading="pathLoading">生成学习路径</el-button>
+            </div>
           </el-card>
         </el-col>
 
@@ -72,9 +76,12 @@
                   <span>{{ s.action }}</span>
                 </div>
               </div>
+              <el-button type="primary" text @click="loadWrongAnalysis" :loading="wrongLoading">重新分析</el-button>
             </template>
-            <el-empty v-else-if="!wrongLoading" description="暂无错题记录，继续保持！" />
-            <el-button v-if="wrongAnalysis" type="primary" text @click="loadWrongAnalysis" :loading="wrongLoading">重新分析</el-button>
+            <div v-else class="ai-placeholder">
+              <p>AI 将分析你的错题数据，识别错误模式</p>
+              <el-button type="primary" @click="loadWrongAnalysis" :loading="wrongLoading">开始分析</el-button>
+            </div>
           </el-card>
         </el-col>
       </el-row>
@@ -256,8 +263,6 @@ const loadWrongAnalysis = async () => {
 
 onMounted(() => {
   loadDashboard()
-  loadLearningPath()
-  loadWrongAnalysis()
 })
 </script>
 
@@ -307,6 +312,12 @@ onMounted(() => {
   }
 
   .ai-loading { padding: 10px 0; }
+
+  .ai-placeholder {
+    text-align: center;
+    padding: 20px 0;
+    p { font-size: 14px; color: $text-secondary; margin-bottom: 12px; }
+  }
 
   .ai-text {
     font-size: 14px;

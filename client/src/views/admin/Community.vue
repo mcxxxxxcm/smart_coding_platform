@@ -91,9 +91,13 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { adminApi } from '@/api/admin'
+import { aiApi } from '@/api/ai'
 import type { AdminPost } from '@/api/admin'
 
 const loading = ref(false)
+const moderateDialogVisible = ref(false)
+const moderateResult = ref<any>(null)
+const moderateMap = ref<Record<number, boolean>>({})
 const posts = ref<AdminPost[]>([])
 const filters = reactive({ status: '' })
 const pagination = reactive({ page: 1, limit: 10, total: 0 })
@@ -114,6 +118,26 @@ const fetchPosts = async () => {
     ElMessage.error('获取帖子列表失败')
   } finally {
     loading.value = false
+  }
+}
+
+const getCategoryLabel = (key: string) => {
+  const m: Record<string, string> = { violence: '暴力', spam: '广告', hate_speech: '仇恨言论', personal_info: '隐私信息', inappropriate: '不当内容' }
+  return m[key] || key
+}
+
+const aiModerate = async (post: AdminPost) => {
+  moderateMap.value[post.id] = true
+  moderateResult.value = null
+  moderateDialogVisible.value = true
+  try {
+    const content = `${post.title} ${post.content || ''}`
+    const res = await aiApi.moderateContent(content, '帖子')
+    moderateResult.value = res.data
+  } catch {
+    ElMessage.error('AI 审核失败')
+  } finally {
+    moderateMap.value[post.id] = false
   }
 }
 
@@ -143,4 +167,6 @@ onMounted(fetchPosts)
 .admin-community { padding: 20px; }
 .page-header { margin-bottom: 20px; }
 .filter-card { margin-bottom: 20px; }
+.moderate-result { display: flex; align-items: center; gap: 12px; }
+.category-check { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 13px; }
 </style>

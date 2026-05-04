@@ -9,6 +9,19 @@ import { AppError } from '../middleware/error.middleware';
 
 const deepseekService = new DeepSeekService();
 
+const aiCache = new Map<string, { data: any; expireAt: number }>();
+
+const getCached = (key: string): any | null => {
+  const cached = aiCache.get(key);
+  if (cached && cached.expireAt > Date.now()) return cached.data;
+  if (cached) aiCache.delete(key);
+  return null;
+};
+
+const setCache = (key: string, data: any, ttlMs: number = 5 * 60 * 1000) => {
+  aiCache.set(key, { data, expireAt: Date.now() + ttlMs });
+};
+
 export class AiService {
   async chat(userId: number, message: string, problemId?: number, code?: string) {
     if (!message) throw new AppError('消息不能为空', 400);
@@ -72,6 +85,10 @@ export class AiService {
   }
 
   async getLearningPath(userId: number) {
+    const cacheKey = `learning_path_${userId}`;
+    const cached = getCached(cacheKey);
+    if (cached) return { data: cached };
+
     const [submissions] = await pool.execute<RowDataPacket[]>(
       `SELECT s.problem_id, s.status, s.language, s.submitted_at,
         p.title as problem_title, p.difficulty, p.category, p.tags
@@ -90,7 +107,7 @@ export class AiService {
     const user = await userRepository.findById(userId);
     if (!user) throw new AppError('用户不存在', 404);
 
-    const difficultyStats = { easy: { attempted: 0, accepted: 0 }, medium: { attempted: 0, accepted: 0 }, hard: { attempted: 0, accepted: 0 } };
+    const difficultyStats: Record<string, { attempted: number; accepted: number }> = { easy: { attempted: 0, accepted: 0 }, medium: { attempted: 0, accepted: 0 }, hard: { attempted: 0, accepted: 0 } };
     const categoryStats: Record<string, { attempted: number; accepted: number }> = {};
     const problemSet = new Set<number>();
 
@@ -134,10 +151,15 @@ export class AiService {
       parsed = { weakness_analysis: reply, recommended_path: [], recommended_problems: [], weekly_plan: '' };
     }
 
+    setCache(cacheKey, parsed, 10 * 60 * 1000);
     return { data: parsed };
   }
 
   async analyzeWrongAnswers(userId: number) {
+    const cacheKey = `wrong_analysis_${userId}`;
+    const cached = getCached(cacheKey);
+    if (cached) return { data: cached };
+
     const [wrongSubs] = await pool.execute<RowDataPacket[]>(
       `SELECT s.problem_id, s.status, s.code, s.language, s.submitted_at, s.error_message,
         p.title as problem_title, p.difficulty, p.category, p.description
@@ -187,6 +209,7 @@ export class AiService {
       parsed = { error_patterns: [], analysis: reply, suggestions: [], error_type_distribution: {} };
     }
 
+    setCache(cacheKey, parsed, 10 * 60 * 1000);
     return { data: parsed };
   }
 
@@ -286,6 +309,9 @@ ${params.topic ? `- 具体主题：${params.topic}` : ''}
   }
 
   async getOperationsAnalytics() {
+    const cacheKey = 'operations_analytics';
+    const cached = getCached(cacheKey);
+    if (cached) return { data: cached };
     const [userGrowth] = await pool.execute<RowDataPacket[]>(
       `SELECT DATE(created_at) as date, COUNT(*) as count FROM users GROUP BY DATE(created_at) ORDER BY date DESC LIMIT 30`
     );
@@ -331,6 +357,7 @@ ${params.topic ? `- 具体主题：${params.topic}` : ''}
       parsed = { overview: reply, trends: [], insights: [], recommendations: [], risk_alerts: [], weekly_summary: '' };
     }
 
+    setCache(cacheKey, parsed, 30 * 60 * 1000);
     return { data: parsed };
   }
 
@@ -377,6 +404,9 @@ ${params.topic ? `- 具体主题：${params.topic}` : ''}
   }
 
   async batchCheckProblemQuality() {
+    const cacheKey = 'batch_problem_quality';
+    const cached = getCached(cacheKey);
+    if (cached) return { data: cached };
     const [problems] = await pool.execute<RowDataPacket[]>(
       `SELECT id, title, difficulty, category, submission_count, accepted_count,
         ROUND(accepted_count / NULLIF(submission_count, 0) * 100, 1) as acceptance_rate
@@ -404,10 +434,14 @@ ${params.topic ? `- 具体主题：${params.topic}` : ''}
       parsed = { results: [], summary: { total: 0, good: 0, warning: 0, poor: 0 }, recommendations: [] };
     }
 
+    setCache(cacheKey, parsed, 30 * 60 * 1000);
     return { data: parsed };
   }
 
   async getStudentDashboard(userId: number) {
+    const cacheKey = `student_dashboard_${userId}`;
+    const cached = getCached(cacheKey);
+    if (cached) return { data: cached };
     const user = await userRepository.findById(userId);
     if (!user) throw new AppError('用户不存在', 404);
 
@@ -515,7 +549,9 @@ ${params.topic ? `- 具体主题：${params.topic}` : ''}
       aiReport = {};
     }
 
-    return { data: { ...dashboardData, aiReport } };
+    const result = { ...dashboardData, aiReport };
+    setCache(cacheKey, result, 5 * 60 * 1000);
+    return { data: result };
   }
 }
 

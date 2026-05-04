@@ -202,7 +202,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="主题">
-          <el-input v-model="aiGenerateForm.topic" placeholder="可选：具体主题，如"二分查找"" />
+          <el-input v-model="aiGenerateForm.topic" placeholder="可选：具体主题，如 二分查找" />
         </el-form-item>
       </el-form>
       <div v-if="aiGeneratedProblem" class="ai-preview">

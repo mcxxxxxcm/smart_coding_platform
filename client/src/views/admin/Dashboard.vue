@@ -130,26 +130,41 @@ import {
   UserFilled, Reading, Document, ChatDotRound,
   Warning, Tickets, Coin, Top, Bottom
 } from '@element-plus/icons-vue'
+import { adminApi } from '@/api/admin'
 
 const uptime = ref(15)
+const loading = ref(false)
 
 const stats = ref([
-  { title: '总用户数', value: '1,234', icon: 'User', type: 'primary', trend: 12 },
-  { title: '今日活跃', value: '356', icon: 'UserFilled', type: 'success', trend: 8 },
-  { title: '课程总数', value: '89', icon: 'Reading', type: 'warning', trend: -2 },
-  { title: '提交总数', value: '12,456', icon: 'Document', type: 'danger', trend: 25 }
+  { title: '总用户数', value: '-', icon: 'User', type: 'primary', trend: 0 },
+  { title: '今日活跃', value: '-', icon: 'UserFilled', type: 'success', trend: 0 },
+  { title: '课程总数', value: '-', icon: 'Reading', type: 'warning', trend: 0 },
+  { title: '提交总数', value: '-', icon: 'Document', type: 'danger', trend: 0 }
 ])
 
-const alerts = ref([
-  { message: 'CPU 使用率超过 80%', type: 'warning' }
-])
+const alerts = ref<any[]>([])
+const recentLogs = ref<any[]>([])
 
-const recentLogs = ref([
-  { time: '2026-04-03 13:20:00', user: 'admin', action: '登录系统', ip: '127.0.0.1', status: 'success' },
-  { time: '2026-04-03 13:18:30', user: 'teacher1', action: '发布课程 "Python 进阶"', ip: '192.168.1.100', status: 'success' },
-  { time: '2026-04-03 13:15:22', user: 'student5', action: '提交代码 (题目 ID: 1)', ip: '10.0.0.50', status: 'success' },
-  { time: '2026-04-03 13:12:11', user: 'unknown', action: '尝试暴力破解密码', ip: '45.33.22.100', status: 'error' }
-])
+const loadStats = async () => {
+  loading.value = true
+  try {
+    const res = await adminApi.getStats()
+    if (res.success && res.data) {
+      const d = res.data
+      stats.value = [
+        { title: '总用户数', value: d.users?.toLocaleString() || '0', icon: 'User', type: 'primary', trend: 0 },
+        { title: '今日活跃', value: d.activeToday?.toLocaleString() || '0', icon: 'UserFilled', type: 'success', trend: 0 },
+        { title: '课程总数', value: d.courses?.toLocaleString() || '0', icon: 'Reading', type: 'warning', trend: 0 },
+        { title: '提交总数', value: d.submissions?.toLocaleString() || '0', icon: 'Document', type: 'danger', trend: 0 }
+      ]
+    }
+  } catch {
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(loadStats)
 </script>
 
 <style scoped lang="scss">
