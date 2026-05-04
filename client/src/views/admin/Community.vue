@@ -35,11 +35,12 @@
         <el-table-column prop="created_at" label="发布时间" width="180">
           <template #default="{ row }">{{ formatDate(row.created_at) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="220" fixed="right">
+        <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
             <el-button v-if="row.status === 'published'" type="warning" size="small" @click="moderatePost(row, 'hide')">隐藏</el-button>
             <el-button v-if="row.status === 'hidden'" type="success" size="small" @click="moderatePost(row, 'show')">显示</el-button>
             <el-button type="danger" size="small" @click="moderatePost(row, 'delete')">删除</el-button>
+            <el-button type="info" size="small" @click="aiModerate(row)" :loading="moderateMap[row.id]">🛡️ AI审核</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -55,6 +56,34 @@
         style="margin-top: 20px; justify-content: flex-end"
       />
     </el-card>
+
+    <el-dialog v-model="moderateDialogVisible" title="🛡️ AI 内容审核报告" width="500px">
+      <div v-if="moderateResult">
+        <div class="moderate-result">
+          <el-tag :type="moderateResult.is_safe ? 'success' : 'danger'" size="large" effect="dark">
+            {{ moderateResult.is_safe ? '✅ 内容安全' : '⚠️ 内容有风险' }}
+          </el-tag>
+          <el-tag :type="moderateResult.risk_level === 'high' ? 'danger' : moderateResult.risk_level === 'medium' ? 'warning' : 'info'" size="small">
+            风险等级: {{ moderateResult.risk_level }}
+          </el-tag>
+        </div>
+        <div v-if="moderateResult.flags?.length" style="margin-top: 12px">
+          <h4>标记项</h4>
+          <el-tag v-for="f in moderateResult.flags" :key="f" type="warning" size="small" style="margin: 2px">{{ f }}</el-tag>
+        </div>
+        <div v-if="moderateResult.categories" style="margin-top: 12px">
+          <h4>分类检测</h4>
+          <div v-for="(v, k) in moderateResult.categories" :key="k" class="category-check">
+            <span>{{ getCategoryLabel(k as string) }}</span>
+            <el-tag :type="v ? 'danger' : 'success'" size="small">{{ v ? '检测到' : '未检测到' }}</el-tag>
+          </div>
+        </div>
+        <div v-if="moderateResult.suggestion" style="margin-top: 12px">
+          <h4>处理建议</h4>
+          <p style="font-size: 13px; color: #606266">{{ moderateResult.suggestion }}</p>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 

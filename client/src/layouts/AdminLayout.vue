@@ -59,6 +59,10 @@
             <el-icon><Coin /></el-icon>
             <span>数据维护</span>
           </router-link>
+          <router-link to="/admin/ai-analytics" class="nav-item" active-class="active">
+            <el-icon><TrendCharts /></el-icon>
+            <span>AI 运营分析</span>
+          </router-link>
         </div>
       </nav>
       
@@ -114,7 +118,7 @@ import { useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import {
   Setting, DataBoard, UserFilled, Key, Reading, Document,
-  ChatDotRound, Tools, Lock, Tickets, Coin, Bell, SwitchButton
+  ChatDotRound, Tools, Lock, Tickets, Coin, Bell, SwitchButton, TrendCharts
 } from '@element-plus/icons-vue'
 
 const route = useRoute()

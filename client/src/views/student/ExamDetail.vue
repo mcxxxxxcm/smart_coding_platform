@@ -2,8 +2,8 @@
   <div class="exam-detail-page">
     <div class="page-header">
       <h2>{{ exam?.title || '考试详情' }}</h2>
-      <el-tag :type="getStatusType(exam?.status || 'draft')" size="large">
-        {{ getStatusText(exam?.status || 'draft') }}
+      <el-tag :type="getTimeStatusType()" size="large" effect="dark">
+        {{ getTimeStatusText() }}
       </el-tag>
     </div>
 
@@ -21,6 +21,9 @@
         </el-descriptions-item>
         <el-descriptions-item label="考试说明" :span="2">
           {{ exam?.description || '暂无说明' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="倒计时" :span="2" v-if="countdownText">
+          <span class="countdown-value">{{ countdownText }}</span>
         </el-descriptions-item>
       </el-descriptions>
     </el-card>
@@ -45,20 +48,20 @@
 
     <div class="action-buttons">
       <el-button @click="$router.back()" size="large">返回</el-button>
-      <el-button 
-        type="primary" 
-        size="large" 
+      <el-button
+        :type="canStartExam ? 'primary' : 'info'"
+        size="large"
         @click="startExam"
         :disabled="!canStartExam"
       >
-        {{ canStartExam ? '开始考试' : '考试未开放' }}
+        {{ getButtonText() }}
       </el-button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { examApi } from '@/api/exam'
@@ -68,40 +71,84 @@ const route = useRoute()
 const router = useRouter()
 const examId = ref<number>(parseInt(route.params.id as string))
 
-const exam = ref<Exam & { questions?: any[] } | null>(null)
+const exam = ref<Exam & { questions?: any[]; hasSubmitted?: boolean } | null>(null)
 
-const canStartExam = computed(() => {
-  if (!exam.value || exam.value.status !== 'published') return false
-  
-  // 检查是否已经提交过该考试
-  if (exam.value.hasSubmitted) return false
-  
-  const now = new Date()
-  const startTime = exam.value.start_time ? new Date(exam.value.start_time) : null
-  const endTime = exam.value.end_time ? new Date(exam.value.end_time) : null
-  
-  if (startTime && now < startTime) return false
-  if (endTime && now > endTime) return false
-  
-  return true
-})
+const now = ref(Date.now())
+let timerHandle: number | null = null
 
-const getStatusText = (status: string) => {
-  const map: Record<string, string> = {
-    draft: '草稿',
-    published: '进行中',
-    ended: '已结束'
-  }
-  return map[status] || status
+type TimeStatus = 'not_open' | 'in_progress' | 'ended' | 'no_time'
+
+const getTimeStatus = (): TimeStatus => {
+  if (!exam.value) return 'not_open'
+  if (exam.value.status === 'draft') return 'not_open'
+
+  const currentTime = now.value
+  const startTime = exam.value.start_time ? new Date(exam.value.start_time).getTime() : null
+  const endTime = exam.value.end_time ? new Date(exam.value.end_time).getTime() : null
+
+  if (!startTime && !endTime) return 'no_time'
+  if (startTime && currentTime < startTime) return 'not_open'
+  if (endTime && currentTime > endTime) return 'ended'
+  return 'in_progress'
 }
 
-const getStatusType = (status: string) => {
-  const map: Record<string, string> = {
-    draft: 'info',
-    published: 'success',
-    ended: 'warning'
+const getTimeStatusText = (): string => {
+  const map: Record<TimeStatus, string> = {
+    not_open: '未开放',
+    in_progress: '进行中',
+    ended: '已过期',
+    no_time: '进行中'
   }
-  return map[status] || 'info'
+  return map[getTimeStatus()]
+}
+
+const getTimeStatusType = (): string => {
+  const map: Record<TimeStatus, string> = {
+    not_open: 'warning',
+    in_progress: 'success',
+    ended: 'info',
+    no_time: 'success'
+  }
+  return map[getTimeStatus()]
+}
+
+const countdownText = computed(() => {
+  const status = getTimeStatus()
+  if (status !== 'not_open' || !exam.value?.start_time) return ''
+
+  const diff = new Date(exam.value.start_time).getTime() - now.value
+  if (diff <= 0) return ''
+
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+
+  if (days > 0) return `${days}天${hours}小时${minutes}分${seconds}秒后开放`
+  if (hours > 0) return `${hours}小时${minutes}分${seconds}秒后开放`
+  if (minutes > 0) return `${minutes}分${seconds}秒后开放`
+  return `${seconds}秒后开放`
+})
+
+const canStartExam = computed(() => {
+  if (!exam.value) return false
+  if (exam.value.status === 'draft') return false
+  if ((exam.value as any).hasSubmitted) return false
+
+  const status = getTimeStatus()
+  return status === 'in_progress' || status === 'no_time'
+})
+
+const getButtonText = (): string => {
+  const status = getTimeStatus()
+  const map: Record<TimeStatus, string> = {
+    not_open: '未开放',
+    in_progress: '开始考试',
+    ended: '已过期',
+    no_time: '开始考试'
+  }
+  if ((exam.value as any)?.hasSubmitted) return '已提交'
+  return map[status]
 }
 
 const getDifficultyText = (difficulty: string) => {
@@ -138,23 +185,39 @@ const loadExam = async () => {
 
 const startExam = async () => {
   if (!canStartExam.value) {
-    ElMessage.warning('考试暂未开放')
+    const status = getTimeStatus()
+    if (status === 'not_open') {
+      ElMessage.warning('考试尚未开放，请在开放时间内参加')
+    } else if (status === 'ended') {
+      ElMessage.warning('考试已过期')
+    } else if ((exam.value as any)?.hasSubmitted) {
+      ElMessage.warning('您已经提交过该考试')
+    }
     return
   }
-  
+
   try {
     ElMessage.success('正在进入考试...')
-    console.log('跳转到考试页面:', `/exams/${examId.value}/take`)
-    // 跳转到考试答题页面
     await router.push(`/exams/${examId.value}/take`)
-    console.log('跳转成功')
   } catch (error) {
     console.error('跳转失败:', error)
     ElMessage.error('进入考试失败，请刷新页面重试')
   }
 }
 
-onMounted(loadExam)
+onMounted(() => {
+  timerHandle = window.setInterval(() => {
+    now.value = Date.now()
+  }, 1000)
+  loadExam()
+})
+
+onUnmounted(() => {
+  if (timerHandle) {
+    clearInterval(timerHandle)
+    timerHandle = null
+  }
+})
 </script>
 
 <style scoped lang="scss">
@@ -180,6 +243,12 @@ onMounted(loadExam)
   
   .exam-info-card {
     margin-bottom: 20px;
+  }
+
+  .countdown-value {
+    color: #e6a23c;
+    font-weight: 600;
+    font-size: 15px;
   }
   
   .questions-card {

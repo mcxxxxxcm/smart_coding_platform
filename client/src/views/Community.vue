@@ -30,6 +30,43 @@
         </aside>
         
         <main class="posts-main">
+          <div class="smart-search-bar">
+            <el-input
+              v-model="smartSearchQuery"
+              placeholder="AI 智能搜索：输入问题，AI 帮你找答案..."
+              clearable
+              @keyup.enter="doSmartSearch"
+              class="smart-search-input"
+            >
+              <template #prefix><el-icon><Search /></el-icon></template>
+            </el-input>
+            <el-button type="primary" @click="doSmartSearch" :loading="smartSearchLoading">AI 搜索</el-button>
+          </div>
+
+          <div v-if="smartSearchResult" class="smart-search-result">
+            <el-card shadow="never" class="ai-result-card">
+              <template #header>
+                <div class="ai-result-header">
+                  <span>🤖 AI 回答</span>
+                  <el-button text size="small" @click="smartSearchResult = null">关闭</el-button>
+                </div>
+              </template>
+              <div class="ai-answer" v-html="formatAiAnswer(smartSearchResult.ai_answer)"></div>
+              <div v-if="smartSearchResult.related_problems?.length" class="related-section">
+                <h4>相关题目</h4>
+                <el-tag v-for="p in smartSearchResult.related_problems" :key="p.id" @click="$router.push(`/problems/${p.id}`)" style="margin: 2px; cursor: pointer">
+                  #{{ p.id }} - {{ p.relevance }}
+                </el-tag>
+              </div>
+              <div v-if="smartSearchResult.related_posts?.length" class="related-section">
+                <h4>相关帖子</h4>
+                <el-tag v-for="p in smartSearchResult.related_posts" :key="p.id" type="info" @click="viewPost(p.id)" style="margin: 2px; cursor: pointer">
+                  #{{ p.id }} - {{ p.relevance }}
+                </el-tag>
+              </div>
+            </el-card>
+          </div>
+
           <div class="posts-list" v-loading="loading">
             <div
               v-for="post in sortedPosts"
@@ -128,6 +165,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElEmpty } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import { communityApi } from '@/api/community'
+import { aiApi } from '@/api/ai'
 import { useUserStore } from '@/stores/user'
 import type { Post } from '@/types'
 import dayjs from 'dayjs'
@@ -148,6 +186,9 @@ const activeCategory = ref('all')
 const showCreateDialog = ref(false)
 const creating = ref(false)
 const formRef = ref<FormInstance>()
+const smartSearchQuery = ref('')
+const smartSearchLoading = ref(false)
+const smartSearchResult = ref<any>(null)
 
 const categories = [
   { value: 'all', label: '全部', icon: 'Menu' },
@@ -205,6 +246,24 @@ const truncate = (text: string | undefined | null, length: number) => {
 
 const viewPost = (postId: number) => {
   router.push(`/community/posts/${postId}`)
+}
+
+const doSmartSearch = async () => {
+  if (!smartSearchQuery.value.trim()) return
+  smartSearchLoading.value = true
+  try {
+    const res = await aiApi.smartSearch(smartSearchQuery.value.trim())
+    smartSearchResult.value = res.data
+  } catch {
+    ElMessage.error('AI 搜索失败')
+  } finally {
+    smartSearchLoading.value = false
+  }
+}
+
+const formatAiAnswer = (text: string) => {
+  if (!text) return ''
+  return text.replace(/\n/g, '<br>')
 }
 
 const fetchPosts = async () => {
@@ -400,6 +459,42 @@ onMounted(fetchPosts)
 .posts-main {
   flex: 1;
   min-width: 0;
+
+  .smart-search-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+
+    .smart-search-input {
+      flex: 1;
+    }
+  }
+
+  .smart-search-result {
+    margin-bottom: 16px;
+
+    .ai-result-card {
+      border: 1px solid rgba(64, 158, 255, 0.2);
+      background: linear-gradient(135deg, #f0f7ff 0%, #fff 100%);
+
+      .ai-result-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .ai-answer {
+        font-size: 14px;
+        line-height: 1.8;
+        color: #606266;
+      }
+
+      .related-section {
+        margin-top: 12px;
+        h4 { font-size: 13px; margin: 0 0 6px; color: #909399; }
+      }
+    }
+  }
 }
 
 .posts-list {

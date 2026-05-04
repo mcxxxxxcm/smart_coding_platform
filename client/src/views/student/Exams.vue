@@ -6,7 +6,7 @@
 
     <el-tabs v-model="activeTab" class="exam-tabs">
       <el-tab-pane label="考试中心" name="exams">
-        <el-card shadow="hover" class="filter-card">
+        <el-card shadow="never" class="filter-card">
           <el-form :inline="true" :model="filters">
             <el-form-item label="考试名称">
               <el-input v-model="filters.search" placeholder="搜索考试" clearable @keyup.enter="fetchExams" />
@@ -20,11 +20,16 @@
 
         <el-row :gutter="20">
           <el-col :span="8" v-for="exam in exams" :key="exam.id">
-            <el-card shadow="hover" class="exam-card" @click="viewExam(exam)">
+            <el-card
+              shadow="hover"
+              class="exam-card"
+              :class="['exam-card--' + getTimeStatus(exam)]"
+              @click="viewExam(exam)"
+            >
               <template #header>
                 <div class="exam-header">
                   <span class="exam-title">{{ exam.title }}</span>
-                  <el-tag :type="getTimeStatusType(exam)" size="small">
+                  <el-tag :type="getTimeStatusType(exam)" size="small" effect="dark">
                     {{ getTimeStatusText(exam) }}
                   </el-tag>
                 </div>
@@ -61,13 +66,21 @@
                   </div>
                   <div class="time-value">未设置</div>
                 </div>
+                <div class="exam-countdown" v-if="getCountdown(exam)">
+                  <el-icon><Timer /></el-icon>
+                  <span class="countdown-text">{{ getCountdown(exam) }}</span>
+                </div>
+                <div class="exam-remaining" v-if="getRemainingTime(exam)">
+                  <el-icon><Timer /></el-icon>
+                  <span class="remaining-text">{{ getRemainingTime(exam) }}</span>
+                </div>
                 <div class="exam-desc">{{ exam.description || '暂无描述' }}</div>
               </div>
               <template #footer>
                 <div class="exam-footer">
                   <span class="teacher">教师：{{ exam.teacher_name }}</span>
                   <el-button
-                    :type="canStartExam(exam) ? 'primary' : 'info'"
+                    :type="getExamButtonType(exam)"
                     size="small"
                     :disabled="!canStartExam(exam)"
                     @click.stop="startExam(exam)"
@@ -103,15 +116,18 @@
             <el-descriptions-item label="结束时间">{{ currentExam.end_time ? formatDateTime(currentExam.end_time) : '未设置' }}</el-descriptions-item>
             <el-descriptions-item label="教师">{{ currentExam.teacher_name }}</el-descriptions-item>
             <el-descriptions-item label="状态">
-              <el-tag :type="getTimeStatusType(currentExam)" size="small">
+              <el-tag :type="getTimeStatusType(currentExam)" size="small" effect="dark">
                 {{ getTimeStatusText(currentExam) }}
               </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="倒计时" v-if="getCountdown(currentExam)">
+              <span class="detail-countdown">{{ getCountdown(currentExam) }}</span>
             </el-descriptions-item>
           </el-descriptions>
           <template #footer>
             <el-button @click="examDetailVisible = false">关闭</el-button>
             <el-button
-              type="primary"
+              :type="getExamButtonType(currentExam!)"
               @click="startExam(currentExam!)"
               :disabled="!canStartExam(currentExam!)"
             >
@@ -271,9 +287,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Clock, Star, User, Calendar } from '@element-plus/icons-vue'
+import { Clock, Star, User, Calendar, Timer } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { examApi } from '@/api/exam'
 import type { Exam } from '@/api/exam'
@@ -311,17 +327,25 @@ const historyPagination = reactive({
 
 type TimeStatus = 'not_open' | 'in_progress' | 'ended' | 'no_time'
 
+const now = ref(Date.now())
+let timerHandle: number | null = null
+
+const startGlobalTimer = () => {
+  timerHandle = window.setInterval(() => {
+    now.value = Date.now()
+  }, 1000)
+}
+
 const getTimeStatus = (exam: Exam): TimeStatus => {
   if (exam.status === 'draft') return 'not_open'
-  if (exam.status === 'ended') return 'ended'
-  
-  const now = new Date()
-  const startTime = exam.start_time ? new Date(exam.start_time) : null
-  const endTime = exam.end_time ? new Date(exam.end_time) : null
-  
+
+  const currentTime = now.value
+  const startTime = exam.start_time ? new Date(exam.start_time).getTime() : null
+  const endTime = exam.end_time ? new Date(exam.end_time).getTime() : null
+
   if (!startTime && !endTime) return 'no_time'
-  if (startTime && now < startTime) return 'not_open'
-  if (endTime && now > endTime) return 'ended'
+  if (startTime && currentTime < startTime) return 'not_open'
+  if (endTime && currentTime > endTime) return 'ended'
   return 'in_progress'
 }
 
@@ -345,6 +369,40 @@ const getTimeStatusType = (exam: Exam): string => {
   return map[getTimeStatus(exam)]
 }
 
+const getCountdown = (exam: Exam): string => {
+  const status = getTimeStatus(exam)
+  if (status !== 'not_open' || !exam.start_time) return ''
+
+  const diff = new Date(exam.start_time).getTime() - now.value
+  if (diff <= 0) return ''
+
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+
+  if (days > 0) return `${days}天${hours}小时后开放`
+  if (hours > 0) return `${hours}小时${minutes}分钟后开放`
+  if (minutes > 0) return `${minutes}分${seconds}秒后开放`
+  return `${seconds}秒后开放`
+}
+
+const getRemainingTime = (exam: Exam): string => {
+  const status = getTimeStatus(exam)
+  if (status !== 'in_progress' || !exam.end_time) return ''
+
+  const diff = new Date(exam.end_time).getTime() - now.value
+  if (diff <= 0) return ''
+
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+
+  if (days > 0) return `剩余${days}天${hours}小时`
+  if (hours > 0) return `剩余${hours}小时${minutes}分钟`
+  return `剩余${minutes}分钟`
+}
+
 const canStartExam = (exam: Exam): boolean => {
   if (exam.status === 'draft') return false
   const status = getTimeStatus(exam)
@@ -358,6 +416,17 @@ const getExamButtonText = (exam: Exam): string => {
     in_progress: '开始考试',
     ended: '已过期',
     no_time: '开始考试'
+  }
+  return map[status]
+}
+
+const getExamButtonType = (exam: Exam): string => {
+  const status = getTimeStatus(exam)
+  const map: Record<TimeStatus, string> = {
+    not_open: 'info',
+    in_progress: 'primary',
+    ended: 'info',
+    no_time: 'primary'
   }
   return map[status]
 }
@@ -509,7 +578,17 @@ const formatDate = (d: string) => {
   return d ? new Date(d).toLocaleString('zh-CN') : '-'
 }
 
-onMounted(fetchExams)
+onMounted(() => {
+  startGlobalTimer()
+  fetchExams()
+})
+
+onUnmounted(() => {
+  if (timerHandle) {
+    clearInterval(timerHandle)
+    timerHandle = null
+  }
+})
 </script>
 
 <style scoped lang="scss">
@@ -537,15 +616,33 @@ onMounted(fetchExams)
   
   .filter-card {
     margin-bottom: 20px;
+    border: 1px solid #ebeef5;
+    border-radius: 8px;
   }
   
   .exam-card {
     margin-bottom: 20px;
     cursor: pointer;
-    transition: transform 0.2s;
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: 2px solid transparent;
     
     &:hover {
       transform: translateY(-4px);
+    }
+
+    &.exam-card--not_open {
+      border-color: rgba(230, 162, 60, 0.3);
+      .exam-header .exam-title { color: $text-secondary; }
+    }
+
+    &.exam-card--in_progress {
+      border-color: rgba(103, 194, 58, 0.3);
+    }
+
+    &.exam-card--ended {
+      border-color: rgba(144, 147, 153, 0.3);
+      opacity: 0.75;
+      .exam-header .exam-title { color: $text-secondary; }
     }
     
     .exam-header {
@@ -591,6 +688,40 @@ onMounted(fetchExams)
           color: $text-primary;
         }
       }
+
+      .exam-countdown {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 12px;
+        margin-bottom: 12px;
+        background: linear-gradient(135deg, #fdf6ec 0%, #fef0e0 100%);
+        border-radius: 6px;
+        border: 1px solid rgba(230, 162, 60, 0.2);
+        color: #e6a23c;
+        font-size: 13px;
+
+        .countdown-text {
+          font-weight: 500;
+        }
+      }
+
+      .exam-remaining {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 12px;
+        margin-bottom: 12px;
+        background: linear-gradient(135deg, #f0f9eb 0%, #e1f3d8 100%);
+        border-radius: 6px;
+        border: 1px solid rgba(103, 194, 58, 0.2);
+        color: #67c23a;
+        font-size: 13px;
+
+        .remaining-text {
+          font-weight: 500;
+        }
+      }
       
       .exam-desc {
         font-size: 13px;
@@ -630,6 +761,12 @@ onMounted(fetchExams)
 .fail-score {
   color: #f56c6c;
   font-weight: bold;
+}
+
+.detail-countdown {
+  color: #e6a23c;
+  font-weight: 600;
+  font-size: 14px;
 }
 
 .wrong-question-header {

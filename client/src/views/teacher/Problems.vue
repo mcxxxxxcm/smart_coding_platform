@@ -6,6 +6,10 @@
         <el-icon><Plus /></el-icon>
         添加题目
       </el-button>
+      <el-button type="success" @click="showAiGenerateDialog = true">
+        <el-icon><MagicStick /></el-icon>
+        AI 出题
+      </el-button>
     </div>
 
     <el-card shadow="hover" class="filter-card">
@@ -172,14 +176,62 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="showAiGenerateDialog" title="AI 智能出题" width="600px">
+      <el-form :model="aiGenerateForm" label-width="80px">
+        <el-form-item label="知识点">
+          <el-select v-model="aiGenerateForm.category" placeholder="选择知识点分类" style="width: 100%">
+            <el-option label="算法" value="algorithm" />
+            <el-option label="数据结构" value="datastructure" />
+            <el-option label="字符串" value="string" />
+            <el-option label="动态规划" value="dp" />
+            <el-option label="图论" value="graph" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="难度">
+          <el-select v-model="aiGenerateForm.difficulty" placeholder="选择难度" style="width: 100%">
+            <el-option label="简单" value="easy" />
+            <el-option label="中等" value="medium" />
+            <el-option label="困难" value="hard" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="语言">
+          <el-select v-model="aiGenerateForm.language" placeholder="选择编程语言" style="width: 100%">
+            <el-option label="Python" value="python" />
+            <el-option label="C/C++" value="cpp" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="主题">
+          <el-input v-model="aiGenerateForm.topic" placeholder="可选：具体主题，如"二分查找"" />
+        </el-form-item>
+      </el-form>
+      <div v-if="aiGeneratedProblem" class="ai-preview">
+        <el-alert type="success" :closable="false" style="margin-bottom: 12px" title="AI 已生成题目，请预览后确认添加" />
+        <el-descriptions :column="1" border size="small">
+          <el-descriptions-item label="标题">{{ aiGeneratedProblem.title }}</el-descriptions-item>
+          <el-descriptions-item label="难度">{{ aiGeneratedProblem.difficulty }}</el-descriptions-item>
+          <el-descriptions-item label="描述">
+            <div style="max-height: 200px; overflow-y: auto; white-space: pre-wrap">{{ aiGeneratedProblem.description }}</div>
+          </el-descriptions-item>
+        </el-descriptions>
+      </div>
+      <template #footer>
+        <el-button @click="showAiGenerateDialog = false">取消</el-button>
+        <el-button v-if="aiGeneratedProblem" type="success" @click="confirmAiProblem" :loading="aiConfirmLoading">确认添加到题库</el-button>
+        <el-button type="primary" @click="generateAiProblem" :loading="aiGenerateLoading">
+          {{ aiGeneratedProblem ? '重新生成' : '生成题目' }}
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, MagicStick } from '@element-plus/icons-vue'
 import { problemApi } from '@/api/problem'
+import { aiApi } from '@/api/ai'
 import type { Problem } from '@/types'
 
 const loading = ref(false)
@@ -187,6 +239,17 @@ const submitting = ref(false)
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const formRef = ref<FormInstance>()
+
+const showAiGenerateDialog = ref(false)
+const aiGenerateLoading = ref(false)
+const aiConfirmLoading = ref(false)
+const aiGeneratedProblem = ref<any>(null)
+const aiGenerateForm = reactive({
+  category: 'algorithm',
+  difficulty: 'medium',
+  language: 'python',
+  topic: ''
+})
 
 const problems = ref<Problem[]>([])
 const filters = reactive({
@@ -250,6 +313,51 @@ const getDifficultyType = (difficulty: string) => {
     hard: 'danger'
   }
   return map[difficulty] || 'info'
+}
+
+const generateAiProblem = async () => {
+  aiGenerateLoading.value = true
+  aiGeneratedProblem.value = null
+  try {
+    const res = await aiApi.generateProblem(aiGenerateForm)
+    aiGeneratedProblem.value = res.data
+    ElMessage.success('题目生成成功，请预览确认')
+  } catch {
+    ElMessage.error('AI 生成题目失败，请重试')
+  } finally {
+    aiGenerateLoading.value = false
+  }
+}
+
+const confirmAiProblem = async () => {
+  if (!aiGeneratedProblem.value) return
+  aiConfirmLoading.value = true
+  try {
+    const p = aiGeneratedProblem.value
+    await problemApi.createProblem({
+      title: p.title,
+      description: p.description,
+      difficulty: p.difficulty,
+      category: p.category,
+      input_format: p.input_format || '',
+      output_format: p.output_format || '',
+      examples: p.examples || [],
+      constraints: p.constraints || '',
+      test_cases: p.test_cases || [],
+      hints: p.hints || [],
+      time_limit: 1000,
+      memory_limit: 256,
+      template_code: p.template_code || {}
+    })
+    ElMessage.success('题目已添加到题库')
+    showAiGenerateDialog.value = false
+    aiGeneratedProblem.value = null
+    fetchProblems()
+  } catch {
+    ElMessage.error('添加题目失败')
+  } finally {
+    aiConfirmLoading.value = false
+  }
 }
 
 const fetchProblems = async () => {

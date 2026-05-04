@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { body } from 'express-validator';
-import { authenticate } from '../middleware/auth.middleware';
+import { authenticate, authorize } from '../middleware/auth.middleware';
 import { AIController } from '../controllers/ai.controller';
 import { validate } from '../middleware/validate.middleware';
 import { bindController } from '../middleware/async.middleware';
@@ -40,5 +40,16 @@ router.post('/hint',
   ]),
   ai.getHint
 );
+
+router.get('/learning-path', ai.getLearningPath);
+router.get('/wrong-analysis', ai.analyzeWrongAnswers);
+router.post('/generate-problem', ai.generateProblem);
+router.post('/smart-search', ai.smartSearch);
+router.post('/moderate', ai.moderateContent);
+router.get('/student-dashboard', ai.getStudentDashboard);
+
+router.get('/operations-analytics', authorize('admin'), ai.getOperationsAnalytics);
+router.get('/problem-quality/batch', authorize('admin', 'teacher'), ai.batchCheckProblemQuality);
+router.get('/problem-quality/:id', authorize('admin', 'teacher'), ai.checkProblemQuality);
 
 export default router;

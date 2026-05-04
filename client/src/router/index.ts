@@ -85,6 +85,12 @@ const routes: RouteRecordRaw[] = [
         name: 'CourseLearning',
         component: () => import('@/views/student/CourseLearning.vue'),
         meta: { title: '课程学习', requiresAuth: true }
+      },
+      {
+        path: 'ai-dashboard',
+        name: 'AiDashboard',
+        component: () => import('@/views/student/AiDashboard.vue'),
+        meta: { title: 'AI 学习中心', requiresAuth: true }
       }
     ]
   },
@@ -223,6 +229,12 @@ const routes: RouteRecordRaw[] = [
         name: 'AdminDatabase',
         component: () => import('@/views/admin/Database.vue'),
         meta: { title: '数据维护' }
+      },
+      {
+        path: 'ai-analytics',
+        name: 'AdminAiAnalytics',
+        component: () => import('@/views/admin/AiAnalytics.vue'),
+        meta: { title: 'AI 运营分析' }
       }
     ]
   },

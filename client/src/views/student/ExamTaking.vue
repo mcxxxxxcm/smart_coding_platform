@@ -198,10 +198,24 @@ const loadExam = async () => {
     const res = await examApi.getExamById(examId.value)
     exam.value = res.data
     
-    // 检查是否已经提交过该考试
     if (exam.value.hasSubmitted) {
       ElMessage.warning('您已经提交过该考试，不能再次进入')
       router.push(`/exams/${examId.value}`)
+      return
+    }
+
+    const now = Date.now()
+    const startTime = exam.value.start_time ? new Date(exam.value.start_time).getTime() : null
+    const endTime = exam.value.end_time ? new Date(exam.value.end_time).getTime() : null
+
+    if (startTime && now < startTime) {
+      ElMessage.warning('考试尚未开放，请在开放时间内参加')
+      router.push('/exams')
+      return
+    }
+    if (endTime && now > endTime) {
+      ElMessage.warning('考试已过期，无法进入')
+      router.push('/exams')
       return
     }
     

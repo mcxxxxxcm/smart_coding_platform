@@ -32,6 +32,9 @@
           <router-link to="/community" class="nav-link" :class="{ active: $route.path.startsWith('/community') }">
             <span class="nav-text">学习社区</span>
           </router-link>
+          <router-link to="/ai-dashboard" class="nav-link" :class="{ active: $route.path.startsWith('/ai-dashboard') }">
+            <span class="nav-text">AI 学习</span>
+          </router-link>
         </nav>
         
         <div class="nav-actions">
