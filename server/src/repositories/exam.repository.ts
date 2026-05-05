@@ -52,7 +52,9 @@ export class ExamRepository {
 
   async getQuestions(examId: number | string) {
     const [rows] = await pool.execute<RowDataPacket[]>(
-      `SELECT eq.id, eq.score, eq.\`order\`, p.id as problem_id, p.title, p.difficulty, p.category
+      `SELECT eq.id, eq.score, eq.\`order\`, p.id as problem_id, p.title, p.difficulty, p.category,
+        p.description, p.input_format, p.output_format, p.examples, p.constraints, p.hints,
+        p.template_code, p.time_limit, p.memory_limit
        FROM exam_questions eq LEFT JOIN problems p ON eq.problem_id = p.id
        WHERE eq.exam_id = ? ORDER BY eq.\`order\` ASC`,
       [examId]

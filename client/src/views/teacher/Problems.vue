@@ -339,22 +339,24 @@ const confirmAiProblem = async () => {
       description: p.description,
       difficulty: p.difficulty,
       category: p.category,
+      tags: [],
       input_format: p.input_format || '',
       output_format: p.output_format || '',
-      examples: p.examples || [],
+      examples: Array.isArray(p.examples) ? p.examples : [],
       constraints: p.constraints || '',
-      test_cases: p.test_cases || [],
-      hints: p.hints || [],
-      time_limit: 1000,
-      memory_limit: 256,
-      template_code: p.template_code || {}
+      test_cases: Array.isArray(p.test_cases) ? p.test_cases : [],
+      hints: Array.isArray(p.hints) ? p.hints : [],
+      time_limit: p.time_limit || 1000,
+      memory_limit: p.memory_limit || 256,
+      template_code: p.template_code && typeof p.template_code === 'object' ? p.template_code : {}
     })
     ElMessage.success('题目已添加到题库')
     showAiGenerateDialog.value = false
     aiGeneratedProblem.value = null
     fetchProblems()
-  } catch {
-    ElMessage.error('添加题目失败')
+  } catch (e: any) {
+    const msg = e?.response?.data?.message || e?.response?.data?.error || '添加题目失败'
+    ElMessage.error(msg)
   } finally {
     aiConfirmLoading.value = false
   }

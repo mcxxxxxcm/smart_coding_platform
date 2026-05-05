@@ -4,13 +4,12 @@
       <div class="exam-info">
         <h2>{{ exam?.title }}</h2>
         <div class="exam-meta">
-          <span>剩余时间：<el-tag type="warning">{{ formattedTime }}</el-tag>
-          </span>
+          <span>剩余时间：<el-tag :type="remainingTime <= 300 ? 'danger' : 'warning'">{{ formattedTime }}</el-tag></span>
           <span>已用时间：<el-tag>{{ usedTime }}</el-tag></span>
         </div>
       </div>
       <div class="exam-actions">
-        <el-button @click="showConfirmSubmit" type="primary" size="large">交卷</el-button>
+        <el-button type="primary" size="large" @click="showConfirmSubmit">交卷</el-button>
       </div>
     </div>
 
@@ -18,8 +17,8 @@
       <div class="questions-nav">
         <h3>答题卡</h3>
         <div class="question-buttons">
-          <el-button 
-            v-for="(q, index) in exam?.questions" 
+          <el-button
+            v-for="(q, index) in exam?.questions"
             :key="q.id"
             :type="currentQuestionIndex === index ? 'primary' : 'default'"
             :class="{ answered: answers[q.problem_id] }"
@@ -30,32 +29,65 @@
           </el-button>
         </div>
         <div class="legend">
-          <div class="legend-item">
-            <span class="dot current">当前</span>
-          </div>
-          <div class="legend-item">
-            <span class="dot answered">已答</span>
-          </div>
-          <div class="legend-item">
-            <span class="dot unanswerd">未答</span>
-          </div>
+          <div class="legend-item"><span class="dot current"></span><span>当前</span></div>
+          <div class="legend-item"><span class="dot answered"></span><span>已答</span></div>
+          <div class="legend-item"><span class="dot unanswered"></span><span>未答</span></div>
         </div>
       </div>
 
       <div class="question-area">
         <div v-if="currentQuestion" class="question-detail">
           <div class="question-header">
-            <span class="question-title">
-              第{{ currentQuestionIndex + 1 }}题：{{ currentQuestion.title }}
-            </span>
+            <span class="question-title">第{{ currentQuestionIndex + 1 }}题：{{ currentQuestion.title }}</span>
             <el-tag :type="getDifficultyType(currentQuestion.difficulty)" size="small">
               {{ getDifficultyText(currentQuestion.difficulty) }}
             </el-tag>
           </div>
           <div class="question-score">分值：{{ currentQuestion.score }}分</div>
 
-          <div class="question-description" v-html="renderedDescription"></div>
-          
+          <div class="question-description">
+            <div class="desc-section" v-if="currentQuestion.description">
+              <p>{{ currentQuestion.description }}</p>
+            </div>
+
+            <div class="desc-section" v-if="currentQuestion.input_format">
+              <h4>输入格式</h4>
+              <p>{{ currentQuestion.input_format }}</p>
+            </div>
+
+            <div class="desc-section" v-if="currentQuestion.output_format">
+              <h4>输出格式</h4>
+              <p>{{ currentQuestion.output_format }}</p>
+            </div>
+
+            <div class="desc-section" v-if="currentQuestion.examples?.length">
+              <h4>示例</h4>
+              <div v-for="(example, index) in currentQuestion.examples" :key="index" class="example-box">
+                <div class="example-item">
+                  <span class="label">输入：</span>
+                  <pre>{{ example.input }}</pre>
+                </div>
+                <div class="example-item">
+                  <span class="label">输出：</span>
+                  <pre>{{ example.output }}</pre>
+                </div>
+                <div class="example-item" v-if="example.explanation">
+                  <span class="label">解释：</span>
+                  <span>{{ example.explanation }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="desc-section" v-if="currentQuestion.constraints">
+              <h4>约束条件</h4>
+              <p>{{ currentQuestion.constraints }}</p>
+            </div>
+
+            <div v-if="!currentQuestion.description && !currentQuestion.examples?.length" class="no-desc">
+              暂无题目描述
+            </div>
+          </div>
+
           <div class="code-editor-wrapper">
             <div class="editor-header">
               <span>代码编辑区</span>
@@ -89,45 +121,49 @@
           </div>
 
           <div class="question-navigation">
-            <el-button 
-              @click="prevQuestion" 
-              :disabled="currentQuestionIndex === 0"
-            >
-              上一题
-            </el-button>
-            <el-button 
-              @click="nextQuestion" 
-              :disabled="currentQuestionIndex >= (exam?.questions?.length || 0) - 1"
-            >
-              下一题
-            </el-button>
+            <el-button @click="prevQuestion" :disabled="currentQuestionIndex === 0">上一题</el-button>
+            <el-button @click="nextQuestion" :disabled="currentQuestionIndex >= (exam?.questions?.length || 0) - 1">下一题</el-button>
           </div>
         </div>
       </div>
     </div>
 
-    <el-dialog v-model="submitDialogVisible" title="确认交卷" width="400px">
+    <el-dialog v-model="submitDialogVisible" title="确认交卷" width="420px" :close-on-click-modal="false">
       <div class="submit-summary">
-        <p>已答题目：{{ answeredCount }} / {{ exam?.questions?.length }}</p>
-        <p>未答题目：{{ (exam?.questions?.length || 0) - answeredCount }}</p>
-        <p>确定要交卷吗？交卷后将无法修改答案！</p>
+        <p>已答题目：<strong>{{ answeredCount }}</strong> / {{ exam?.questions?.length }}</p>
+        <p>未答题目：<strong>{{ (exam?.questions?.length || 0) - answeredCount }}</strong></p>
+        <el-alert type="warning" :closable="false" style="margin-top: 12px">
+          交卷后将无法修改答案，请确认所有题目已作答！
+        </el-alert>
       </div>
       <template #footer>
-        <el-button @click="submitDialogVisible = false">取消</el-button>
+        <el-button @click="submitDialogVisible = false">继续作答</el-button>
         <el-button type="primary" @click="submitExam">确认交卷</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="exitDialogVisible" title="确认退出" width="420px" :close-on-click-modal="false">
+      <el-alert type="error" :closable="false">
+        <template #title>
+          <strong>退出考试后不能再次进行作答！</strong>
+        </template>
+        退出考试将视为放弃本次考试，已作答的答案不会被保存。确定要退出吗？
+      </el-alert>
+      <template #footer>
+        <el-button @click="exitDialogVisible = false">继续考试</el-button>
+        <el-button type="danger" @click="confirmExit">确认退出</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { VideoPlay, Check } from '@element-plus/icons-vue'
 import request from '@/api/request'
 import { examApi } from '@/api/exam'
-import { marked } from 'marked'
 
 const route = useRoute()
 const router = useRouter()
@@ -140,21 +176,25 @@ const currentCode = ref('')
 const output = ref('')
 const running = ref(false)
 const submitDialogVisible = ref(false)
+const exitDialogVisible = ref(false)
 
 const answers = ref<Record<number, { code: string; language: string }>>({})
 
 const timer = ref<number | null>(null)
-const startTime = ref<Date | null>(null)
+const examStartTime = ref<Date | null>(null)
 const elapsedTime = ref(0)
 
 const currentQuestion = computed(() => {
   return exam.value?.questions?.[currentQuestionIndex.value]
 })
 
+const remainingTime = computed(() => {
+  if (!exam.value) return 0
+  return Math.max(0, exam.value.duration * 60 - elapsedTime.value)
+})
+
 const formattedTime = computed(() => {
-  if (!exam.value) return '00:00'
-  const totalSeconds = exam.value.duration * 60 - elapsedTime.value
-  if (totalSeconds <= 0) return '00:00'
+  const totalSeconds = remainingTime.value
   const minutes = Math.floor(totalSeconds / 60)
   const seconds = totalSeconds % 60
   return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
@@ -171,33 +211,29 @@ const answeredCount = computed(() => {
 })
 
 const getDifficultyText = (difficulty: string) => {
-  const map: Record<string, string> = {
-    easy: '简单',
-    medium: '中等',
-    hard: '困难'
-  }
+  const map: Record<string, string> = { easy: '简单', medium: '中等', hard: '困难' }
   return map[difficulty] || difficulty
 }
 
 const getDifficultyType = (difficulty: string) => {
-  const map: Record<string, string> = {
-    easy: 'success',
-    medium: 'warning',
-    hard: 'danger'
-  }
+  const map: Record<string, string> = { easy: 'success', medium: 'warning', hard: 'danger' }
   return map[difficulty] || 'info'
 }
 
-const renderedDescription = computed(() => {
-  if (!currentQuestion.value?.description) return '<p style="color: #909399;">暂无题目描述</p>'
-  return marked(currentQuestion.value.description)
+watch(currentQuestion, (q) => {
+  if (q) {
+    const saved = answers.value[q.problem_id]
+    currentCode.value = saved?.code || q.template_code?.[currentLanguage.value] || ''
+    currentLanguage.value = saved?.language || currentLanguage.value
+    output.value = ''
+  }
 })
 
 const loadExam = async () => {
   try {
     const res = await examApi.getExamById(examId.value)
     exam.value = res.data
-    
+
     if (exam.value.hasSubmitted) {
       ElMessage.warning('您已经提交过该考试，不能再次进入')
       router.push(`/exams/${examId.value}`)
@@ -205,32 +241,39 @@ const loadExam = async () => {
     }
 
     const now = Date.now()
-    const startTime = exam.value.start_time ? new Date(exam.value.start_time).getTime() : null
-    const endTime = exam.value.end_time ? new Date(exam.value.end_time).getTime() : null
+    const examStart = exam.value.start_time ? new Date(exam.value.start_time).getTime() : null
+    const examEnd = exam.value.end_time ? new Date(exam.value.end_time).getTime() : null
 
-    if (startTime && now < startTime) {
+    if (examStart && now < examStart) {
       ElMessage.warning('考试尚未开放，请在开放时间内参加')
       router.push('/exams')
       return
     }
-    if (endTime && now > endTime) {
+    if (examEnd && now > examEnd) {
       ElMessage.warning('考试已过期，无法进入')
       router.push('/exams')
       return
     }
-    
-    startTime.value = new Date()
+
+    examStartTime.value = new Date()
     startTimer()
+
+    if (exam.value.questions?.length > 0) {
+      const firstQ = exam.value.questions[0]
+      currentCode.value = firstQ.template_code?.[currentLanguage.value] || ''
+    }
   } catch (error) {
     console.error('加载考试失败:', error)
     ElMessage.error('加载考试失败')
+    router.push('/exams')
   }
 }
 
 const startTimer = () => {
+  if (timer.value) clearInterval(timer.value)
   timer.value = window.setInterval(() => {
     elapsedTime.value++
-    if (elapsedTime.value >= (exam.value?.duration || 0) * 60) {
+    if (exam.value && elapsedTime.value >= exam.value.duration * 60) {
       ElMessage.warning('考试时间到，自动交卷')
       submitExam()
     }
@@ -251,7 +294,6 @@ const runCode = async () => {
     ElMessage.warning('请先编写代码')
     return
   }
-  
   running.value = true
   try {
     const res = await request.post('/execute', {
@@ -267,15 +309,11 @@ const runCode = async () => {
 }
 
 const prevQuestion = () => {
-  if (currentQuestionIndex.value > 0) {
-    currentQuestionIndex.value--
-  }
+  if (currentQuestionIndex.value > 0) currentQuestionIndex.value--
 }
 
 const nextQuestion = () => {
-  if (currentQuestion.value && currentQuestionIndex.value < (exam.value?.questions?.length || 0) - 1) {
-    currentQuestionIndex.value++
-  }
+  if (currentQuestionIndex.value < (exam.value?.questions?.length || 0) - 1) currentQuestionIndex.value++
 }
 
 const showConfirmSubmit = () => {
@@ -284,97 +322,107 @@ const showConfirmSubmit = () => {
 
 const submitExam = async () => {
   submitDialogVisible.value = false
-  
+  if (timer.value) {
+    clearInterval(timer.value)
+    timer.value = null
+  }
+
   try {
     const submissions = Object.entries(answers.value).map(([problemId, answer]) => ({
       problem_id: parseInt(problemId),
       code: answer.code,
       language: answer.language
     }))
-    
+
     const res = await request.post(`/exams/${examId.value}/submit`, {
       submissions,
       time_used: elapsedTime.value
     })
-    
-    ElMessage.success(`交卷成功！得分：${res.data.score}分`)
+
+    ElMessage.success(`交卷成功！得分：${res.data?.score ?? '--'}分`)
     router.push('/exams')
-  } catch (error) {
-    ElMessage.error('交卷失败')
-  }
-  
-  if (timer.value) {
-    clearInterval(timer.value)
+  } catch (error: any) {
+    ElMessage.error(error?.response?.data?.message || '交卷失败')
   }
 }
+
+const confirmExit = () => {
+  exitDialogVisible.value = false
+  if (timer.value) {
+    clearInterval(timer.value)
+    timer.value = null
+  }
+  router.push('/exams')
+}
+
+const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+  e.preventDefault()
+}
+
+onMounted(() => {
+  loadExam()
+  window.addEventListener('beforeunload', handleBeforeUnload)
+})
 
 onUnmounted(() => {
   if (timer.value) {
     clearInterval(timer.value)
+    timer.value = null
   }
+  window.removeEventListener('beforeunload', handleBeforeUnload)
 })
-
-onMounted(loadExam)
 </script>
 
 <style scoped lang="scss">
 @use '@/styles/variables.scss' as *;
 
 .exam-taking-page {
-  height: calc(100vh - 60px);
+  height: 100vh;
   display: flex;
   flex-direction: column;
-  
+  overflow: hidden;
+
   .exam-header-bar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px 24px;
+    padding: 12px 24px;
     background: #fff;
     border-bottom: 1px solid #e4e7ed;
-    
+    flex-shrink: 0;
+
     .exam-info {
-      h2 {
-        margin: 0 0 8px 0;
-        font-size: 20px;
-      }
-      
-      .exam-meta {
-        display: flex;
-        gap: 16px;
-        font-size: 14px;
-      }
+      h2 { margin: 0 0 6px 0; font-size: 18px; }
+      .exam-meta { display: flex; gap: 16px; font-size: 14px; }
     }
   }
-  
+
   .exam-content {
     flex: 1;
     display: flex;
     overflow: hidden;
-    
+
     .questions-nav {
-      width: 280px;
+      width: 240px;
       background: #fff;
       border-right: 1px solid #e4e7ed;
-      padding: 20px;
+      padding: 16px;
       overflow-y: auto;
-      
-      h3 {
-        margin: 0 0 16px 0;
-        font-size: 16px;
-      }
-      
+      flex-shrink: 0;
+
+      h3 { margin: 0 0 12px 0; font-size: 15px; }
+
       .question-buttons {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
-        margin-bottom: 16px;
-        
+        gap: 6px;
+        margin-bottom: 12px;
+
         .el-button {
-          width: 36px;
-          height: 36px;
+          width: 34px;
+          height: 34px;
           padding: 0;
-          
+
           &.answered {
             background-color: #67c23a;
             color: #fff;
@@ -382,232 +430,157 @@ onMounted(loadExam)
           }
         }
       }
-      
+
       .legend {
         display: flex;
         flex-direction: column;
         gap: 6px;
-        margin-top: 16px;
         padding-top: 12px;
         border-top: 1px solid #e4e7ed;
-        
+
         .legend-item {
           display: flex;
           align-items: center;
           gap: 8px;
-          min-width: 40px;
-          
+
           .dot {
             width: 10px;
             height: 10px;
-            min-width: 10px;
             border-radius: 50%;
-            
-            &.current {
-              background: $primary-color;
-            }
-            
-            &.answered {
-              background: #67c23a;
-            }
-            
-            &.unanswerd {
-              background: #dcdfe6;
-            }
+            &.current { background: $primary-color; }
+            &.answered { background: #67c23a; }
+            &.unanswered { background: #dcdfe6; }
           }
-          
-          span {
-            font-size: 12px;
-            line-height: 1.2;
-            white-space: nowrap;
-          }
+
+          span:last-child { font-size: 12px; }
         }
       }
     }
-    
+
     .question-area {
       flex: 1;
-      padding: 24px;
+      padding: 20px;
       overflow-y: auto;
       background: #f5f7fa;
-      
+
       .question-detail {
         max-width: 900px;
         margin: 0 auto;
-        
+
         .question-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 12px;
-          
-          .question-title {
-            font-size: 18px;
-            font-weight: 600;
-          }
+          margin-bottom: 8px;
+
+          .question-title { font-size: 17px; font-weight: 600; }
         }
-        
+
         .question-score {
           font-size: 14px;
           color: $text-secondary;
           margin-bottom: 16px;
         }
-        
+
         .question-description {
           background: #fff;
           border-radius: 8px;
           padding: 20px;
           margin-bottom: 16px;
-          line-height: 1.8;
-          font-size: 14px;
-          color: $text-secondary;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-          
-          // Markdown 标题样式
-          :deep(h3) {
-            font-size: 16px;
-            color: $text-primary;
-            margin: 20px 0 12px 0;
-            font-weight: 600;
-            border-left: 3px solid $primary-color;
-            padding-left: 12px;
-            line-height: 1.4;
-          }
-          
-          // 首个标题移除上边距
-          :deep(h3:first-child) {
-            margin-top: 0;
-          }
-          
-          // Markdown 加粗文本
-          :deep(strong) {
-            color: $primary-color;
-            font-weight: 600;
-          }
-          
-          // Markdown 行内代码
-          :deep(code) {
-            background: #f0f7ff;
-            color: #e6a23c;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 13px;
-            font-family: 'Consolas', 'Monaco', monospace;
-          }
-          
-          // Markdown 代码块
-          :deep(pre) {
-            background: #1e1e1e;
-            color: #d4d4d4;
-            padding: 16px;
-            border-radius: 8px;
-            overflow-x: auto;
-            margin: 12px 0;
-            font-size: 13px;
-            line-height: 1.6;
-            font-family: 'Consolas', 'Monaco', monospace;
-            
-            code {
-              background: none;
-              color: inherit;
-              padding: 0;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+
+          .desc-section {
+            margin-bottom: 16px;
+
+            h4 {
+              font-size: 15px;
+              font-weight: 600;
+              color: $text-primary;
+              margin: 0 0 8px;
+              padding-left: 10px;
+              border-left: 3px solid $primary-color;
             }
-          }
-          
-          // Markdown 引用块
-          :deep(blockquote) {
-            background: #fffbeb;
-            border-left: 4px solid #d97706;
-            padding: 12px 16px;
-            margin: 16px 0;
-            border-radius: 0 8px 8px 0;
-            color: #78350f;
-            
+
             p {
-              margin-bottom: 0;
-            }
-            
-            strong {
-              color: #78350f;
+              font-size: 14px;
+              line-height: 1.8;
+              color: $text-secondary;
+              margin: 0;
             }
           }
-          
-          :deep(hr) {
-            border: none;
-            height: 1px;
-            background: #e2e8f0;
-            margin: 20px 0;
-          }
-          
-          // Markdown 列表
-          :deep(ul), :deep(ol) {
-            padding-left: 24px;
-            margin: 12px 0;
-            
-            li {
-              margin-bottom: 8px;
-              
-              strong {
+
+          .example-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 12px 16px;
+            margin-bottom: 8px;
+
+            .example-item {
+              margin-bottom: 6px;
+
+              .label {
+                font-weight: 600;
+                font-size: 13px;
                 color: $text-primary;
+              }
+
+              pre {
+                background: #1e1e1e;
+                color: #d4d4d4;
+                padding: 8px 12px;
+                border-radius: 4px;
+                margin: 4px 0 0;
+                font-size: 13px;
+                font-family: 'Consolas', 'Monaco', monospace;
+                white-space: pre-wrap;
               }
             }
           }
-          
-          // 段落间距
-          :deep(p) {
-            margin: 8px 0;
-            
-            strong {
-              color: $text-primary;
-              font-size: 14px;
-            }
+
+          .no-desc {
+            text-align: center;
+            color: #909399;
+            padding: 20px 0;
           }
         }
-        
+
         .code-editor-wrapper {
           background: #fff;
           border-radius: 8px;
           padding: 16px;
           margin-bottom: 16px;
-          
+
           .editor-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 12px;
-            
-            span {
-              font-weight: 500;
-            }
+            span { font-weight: 500; }
           }
-          
+
           .code-editor {
             :deep(textarea) {
               font-family: 'Consolas', 'Monaco', monospace;
               font-size: 14px;
             }
           }
-          
+
           .editor-actions {
             display: flex;
             gap: 12px;
             margin-top: 12px;
           }
         }
-        
+
         .console-output {
           background: #1e1e1e;
           color: #d4d4d4;
           border-radius: 8px;
           padding: 16px;
           margin-bottom: 16px;
-          
-          h4 {
-            margin: 0 0 12px 0;
-            font-size: 14px;
-            color: #9cdcfe;
-          }
-          
+
+          h4 { margin: 0 0 12px 0; font-size: 14px; color: #9cdcfe; }
           pre {
             margin: 0;
             font-family: 'Consolas', 'Monaco', monospace;
@@ -617,7 +590,7 @@ onMounted(loadExam)
             overflow-y: auto;
           }
         }
-        
+
         .question-navigation {
           display: flex;
           justify-content: space-between;
@@ -626,12 +599,9 @@ onMounted(loadExam)
       }
     }
   }
-  
+
   .submit-summary {
-    p {
-      margin: 8px 0;
-      line-height: 1.6;
-    }
+    p { margin: 8px 0; line-height: 1.6; font-size: 14px; }
   }
 }
 </style>

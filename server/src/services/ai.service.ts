@@ -214,36 +214,68 @@ export class AiService {
   }
 
   async generateProblem(userId: number, params: { category: string; difficulty: string; language: string; topic?: string }) {
-    const prompt = `请生成一道编程练习题，要求：
-- 知识点分类：${params.category}
-- 难度：${params.difficulty}
-- 编程语言：${params.language}
-${params.topic ? `- 具体主题：${params.topic}` : ''}
+    const langLabel = params.language === 'cpp' ? 'C/C++' : 'Python';
+    const diffLabel = { easy: '简单', medium: '中等', hard: '困难' }[params.difficulty] || params.difficulty;
 
-请返回JSON格式：
+    const prompt = `你是一位资深的编程竞赛题目设计专家。请严格按照以下要求生成一道完整的编程练习题：
+
+【题目要求】
+- 知识点分类：${params.category}
+- 难度等级：${diffLabel}（对应字段值：${params.difficulty}）
+- 目标语言：${langLabel}
+${params.topic ? `- 具体主题：${params.topic}` : '- 自选一个有趣的题目主题'}
+
+【严格规则】
+1. 题目描述必须清晰完整，包含背景、要求、输入输出格式说明
+2. 必须提供至少2个输入输出示例，每个示例包含input、output和explanation
+3. 必须提供至少5个测试用例（test_cases），覆盖：正常情况、边界情况、极端情况
+4. 测试用例的input和expected必须是纯文本，不要包含额外说明
+5. template_code必须包含完整的输入读取和输出代码框架
+6. reference_solution必须是能通过所有测试用例的完整正确代码
+7. 所有字符串值不要包含换行符，用空格代替
+
+【返回JSON格式】（严格按此格式，不要添加任何其他字段）
 {
-  "title": "题目标题",
-  "description": "题目描述（Markdown格式，包含输入输出格式说明和示例）",
+  "title": "题目标题（简洁明了）",
+  "description": "题目描述。包含：1)问题描述 2)输入格式 3)输出格式 4)数据范围",
   "difficulty": "${params.difficulty}",
   "category": "${params.category}",
-  "input_format": "输入格式说明",
-  "output_format": "输出格式说明",
-  "examples": [{"input": "示例输入", "output": "示例输出", "explanation": "解释"}],
-  "constraints": "约束条件",
-  "test_cases": [{"input": "测试输入", "expected": "期望输出"}],
-  "hints": ["提示1", "提示2"],
-  "template_code": {"${params.language}": "模板代码"},
-  "reference_solution": {"${params.language}": "参考解答"}
-}`;
+  "input_format": "第一行输入一个整数n，第二行输入n个整数...",
+  "output_format": "输出一个整数，表示...",
+  "examples": [
+    {"input": "5\\n1 2 3 4 5", "output": "15", "explanation": "1+2+3+4+5=15"},
+    {"input": "3\\n10 20 30", "output": "60", "explanation": "10+20+30=60"}
+  ],
+  "constraints": "1 <= n <= 1000, 1 <= ai <= 10000",
+  "test_cases": [
+    {"input": "5\\n1 2 3 4 5", "expected": "15"},
+    {"input": "3\\n10 20 30", "expected": "60"},
+    {"input": "1\\n100", "expected": "100"},
+    {"input": "2\\n0 0", "expected": "0"},
+    {"input": "4\\n-1 -2 -3 -4", "expected": "-10"}
+  ],
+  "hints": ["提示1：考虑使用循环累加", "提示2：注意边界情况"],
+  "template_code": {"${params.language}": "${params.language === 'python' ? '# 读取输入\\nn = int(input())\\narr = list(map(int, input().split()))\\n\\n# 在此处编写你的代码\\n\\n# 输出结果\\nprint(result)' : '#include <iostream>\\n#include <vector>\\nusing namespace std;\\n\\nint main() {\\n    int n;\\n    cin >> n;\\n    vector<int> arr(n);\\n    for (int i = 0; i < n; i++) cin >> arr[i];\\n\\n    // 在此处编写你的代码\\n\\n    cout << result << endl;\\n    return 0;\\n}'}"},
+  "reference_solution": {"${params.language}": "${params.language === 'python' ? 'n = int(input())\\narr = list(map(int, input().split()))\\nprint(sum(arr))' : '#include <iostream>\\n#include <vector>\\nusing namespace std;\\n\\nint main() {\\n    int n;\\n    cin >> n;\\n    vector<int> arr(n);\\n    for (int i = 0; i < n; i++) cin >> arr[i];\\n    long long sum = 0;\\n    for (int x : arr) sum += x;\\n    cout << sum << endl;\\n    return 0;\\n}'}"}
+}
 
-    const reply = await deepseekService.chat(
-      prompt,
-      '你是一个专业的编程题目设计专家，请生成高质量的编程练习题。用中文描述，返回有效JSON。'
-    );
+注意：上面的示例是以求和为例，你需要生成一道${diffLabel}难度的${params.category}题目，不要生成求和题。确保test_cases中的expected值与reference_solution的运行结果完全一致。`;
+
+    const systemPrompt = `你是一个专业的编程题目设计专家。你必须返回有效的JSON，不要包含任何Markdown标记、注释或额外文本。确保：
+1. JSON格式严格合法，所有字符串正确转义
+2. test_cases至少5个，覆盖各种边界
+3. reference_solution代码完整可运行
+4. examples和test_cases中的input格式必须一致（都用\\n表示换行）
+5. 用中文描述题目，代码用${langLabel}`;
+
+    const reply = await deepseekService.chat(prompt, systemPrompt);
 
     let parsed;
     try {
-      const jsonMatch = reply.match(/\{[\s\S]*\}/);
+      let jsonStr = reply;
+      const codeBlockMatch = reply.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (codeBlockMatch) jsonStr = codeBlockMatch[1];
+      const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
       parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
     } catch {
       parsed = null;
@@ -251,6 +283,18 @@ ${params.topic ? `- 具体主题：${params.topic}` : ''}
 
     if (!parsed) {
       throw new AppError('AI生成的题目格式异常，请重试', 500);
+    }
+
+    if (!parsed.test_cases || parsed.test_cases.length < 3) {
+      parsed.test_cases = parsed.examples?.map((e: any) => ({
+        input: e.input, expected: e.output
+      })) || [];
+    }
+
+    if (!parsed.template_code || typeof parsed.template_code === 'string') {
+      const pyTemplate = '# 读取输入\nn = int(input())\n\n# 在此处编写你的代码\n\n# 输出结果\nprint(result)';
+      const cppTemplate = '#include <iostream>\nusing namespace std;\n\nint main() {\n    int n;\n    cin >> n;\n\n    // 在此处编写你的代码\n\n    cout << result << endl;\n    return 0;\n}';
+      parsed.template_code = { python: pyTemplate, cpp: cppTemplate };
     }
 
     return { data: parsed };

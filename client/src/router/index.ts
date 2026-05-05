@@ -75,12 +75,6 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '考试详情' }
       },
       {
-        path: 'exams/:id/take',
-        name: 'ExamTaking',
-        component: () => import('@/views/student/ExamTaking.vue'),
-        meta: { title: '开始考试', requiresAuth: true }
-      },
-      {
         path: 'courses/:id/learn',
         name: 'CourseLearning',
         component: () => import('@/views/student/CourseLearning.vue'),
@@ -93,6 +87,13 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'AI 学习中心', requiresAuth: true }
       }
     ]
+  },
+
+  {
+    path: '/exams/:id/take',
+    name: 'ExamTaking',
+    component: () => import('@/views/student/ExamTaking.vue'),
+    meta: { title: '开始考试', requiresAuth: true }
   },
 
   // 教师端路由

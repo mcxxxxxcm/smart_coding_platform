@@ -296,7 +296,7 @@ export class AdminController {
     for (const table of tableNames) {
       try {
         const [rows] = await pool.execute<RowDataPacket[]>(
-          'SELECT COUNT(*) as total FROM ??', [table]
+          `SELECT COUNT(*) as total FROM ${table}`
         );
         tables.push({ name: table, rows: rows[0].total });
       } catch {

@@ -85,19 +85,25 @@ export class ProblemRepository {
 
   async create(data: {
     title: string; description: string; difficulty: string; category: string;
-    tags: any; input_format: string; output_format: string; examples: any;
-    constraints: string; test_cases: any; hints: any; time_limit: number;
-    memory_limit: number; template_code: any; created_by: number;
+    tags?: any; input_format?: string; output_format?: string; examples?: any;
+    constraints?: string; test_cases?: any; hints?: any; time_limit?: number;
+    memory_limit?: number; template_code?: any; created_by: number;
   }) {
     const [result] = await pool.execute<ResultSetHeader>(
       `INSERT INTO problems (title, description, difficulty, category, tags, input_format, output_format,
         examples, constraints, test_cases, hints, time_limit, memory_limit, template_code,
         created_by, status, submission_count, accepted_count, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'published', 0, 0, NOW(), NOW())`,
-      [data.title, data.description, data.difficulty, data.category, JSON.stringify(data.tags),
-       data.input_format, data.output_format, JSON.stringify(data.examples), data.constraints,
-       JSON.stringify(data.test_cases), JSON.stringify(data.hints), data.time_limit, data.memory_limit,
-       JSON.stringify(data.template_code), data.created_by]
+      [data.title, data.description, data.difficulty, data.category,
+       data.tags ? JSON.stringify(data.tags) : null,
+       data.input_format || null, data.output_format || null,
+       data.examples ? JSON.stringify(data.examples) : null,
+       data.constraints || null,
+       data.test_cases ? JSON.stringify(data.test_cases) : null,
+       data.hints ? JSON.stringify(data.hints) : null,
+       data.time_limit || 1000, data.memory_limit || 256,
+       data.template_code ? JSON.stringify(data.template_code) : null,
+       data.created_by]
     );
     await deleteCacheByPattern('problems:*');
     return result.insertId;

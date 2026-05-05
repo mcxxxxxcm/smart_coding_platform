@@ -18,14 +18,30 @@ export class ProblemService {
 
   async createProblem(data: {
     title: string; description: string; difficulty: string; category: string;
-    tags: any; input_format: string; output_format: string; examples: any;
-    constraints: string; test_cases: any; hints: any; time_limit: number;
-    memory_limit: number; template_code: any; created_by: number;
+    tags?: any; input_format?: string; output_format?: string; examples?: any;
+    constraints?: string; test_cases?: any; hints?: any; time_limit?: number;
+    memory_limit?: number; template_code?: any; created_by: number;
   }) {
-    if (!data.title || !data.description) {
-      throw new AppError('题目标题和描述不能为空', 400);
+    if (!data.title) {
+      throw new AppError('题目标题不能为空', 400);
     }
-    return problemRepository.create(data);
+    return problemRepository.create({
+      title: data.title,
+      description: data.description || '',
+      difficulty: data.difficulty || 'easy',
+      category: data.category || 'algorithm',
+      tags: data.tags || [],
+      input_format: data.input_format || '',
+      output_format: data.output_format || '',
+      examples: data.examples || [],
+      constraints: data.constraints || '',
+      test_cases: data.test_cases || [],
+      hints: data.hints || [],
+      time_limit: data.time_limit || 1000,
+      memory_limit: data.memory_limit || 256,
+      template_code: data.template_code || {},
+      created_by: data.created_by
+    });
   }
 
   async updateProblem(id: number | string, userId: number, userRole: string, data: Record<string, any>) {

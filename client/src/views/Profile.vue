@@ -1,16 +1,17 @@
 <template>
-  <div class="profile-page page-container">
+  <div class="profile-page">
     <div class="container">
-      <div class="profile-hero">
-        <div class="hero-bg"></div>
-        <div class="profile-header">
-          <el-avatar :size="96" :src="user?.avatar || undefined" class="profile-avatar">
+      <div class="profile-header">
+        <div class="profile-left">
+          <el-avatar :size="80" :src="user?.avatar || undefined" class="profile-avatar">
             {{ user?.username?.charAt(0).toUpperCase() }}
           </el-avatar>
           <div class="profile-info">
             <h1>{{ user?.username }}</h1>
             <p class="bio">{{ user?.bio || '这个人很懒，什么都没写...' }}</p>
           </div>
+        </div>
+        <div class="profile-right">
           <div class="profile-stats">
             <div class="stat-item">
               <span class="stat-value">Lv.{{ user?.level }}</span>
@@ -27,7 +28,7 @@
               <span class="stat-label">积分</span>
             </div>
           </div>
-          <el-button type="primary" @click="showEditDialog = true" round>编辑资料</el-button>
+          <el-button type="primary" @click="showEditDialog = true" plain>编辑资料</el-button>
         </div>
       </div>
       
@@ -38,7 +39,7 @@
               <div v-for="course in enrolledCourses" :key="course.course_id" class="course-card">
                 <div class="course-info">
                   <h3>{{ course.course_title }}</h3>
-                  <el-progress :percentage="course.progress" :stroke-width="6" :color="course.progress === 100 ? '#16a34a' : '#0f766e'" />
+                  <el-progress :percentage="course.progress" :stroke-width="6" />
                   <div class="course-status">
                     <span :class="course.completed ? 'completed' : 'in-progress'">
                       {{ course.completed ? '已完成' : '学习中' }}
@@ -84,7 +85,7 @@
                   <el-input v-model="passwordForm.confirmPassword" type="password" show-password />
                 </el-form-item>
                 <el-form-item>
-                  <el-button type="primary" @click="changePassword" :loading="changingPassword" round>修改密码</el-button>
+                  <el-button type="primary" @click="changePassword" :loading="changingPassword">修改密码</el-button>
                 </el-form-item>
               </el-form>
             </div>
@@ -117,6 +118,7 @@ import type { FormInstance, FormRules } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { authApi } from '@/api/auth'
 import { submissionApi } from '@/api/problem'
+import request from '@/api/request'
 import type { Submission, UserProgress } from '@/types'
 import dayjs from 'dayjs'
 
@@ -163,27 +165,29 @@ const passwordRules: FormRules = {
 }
 
 const getDifficultyText = (difficulty: string) => {
-  const texts: Record<string, string> = {
-    easy: '简单',
-    medium: '中等',
-    hard: '困难'
-  }
+  const texts: Record<string, string> = { easy: '简单', medium: '中等', hard: '困难' }
   return texts[difficulty] || difficulty
 }
 
 const getStatusText = (status: string) => {
   const texts: Record<string, string> = {
-    accepted: '通过',
-    wrong_answer: '答案错误',
-    time_limit_exceeded: '超时',
-    runtime_error: '运行错误',
-    compilation_error: '编译错误'
+    accepted: '通过', wrong_answer: '答案错误', time_limit_exceeded: '超时',
+    runtime_error: '运行错误', compilation_error: '编译错误'
   }
   return texts[status] || status
 }
 
 const formatTime = (time: string) => {
   return dayjs(time).format('YYYY-MM-DD HH:mm')
+}
+
+const fetchEnrolledCourses = async () => {
+  try {
+    const res = await request.get('/users/progress')
+    enrolledCourses.value = res.data?.courses || []
+  } catch {
+    console.error('获取课程进度失败')
+  }
 }
 
 const fetchSubmissions = async () => {
@@ -223,166 +227,125 @@ const changePassword = async () => {
   }
 }
 
-onMounted(fetchSubmissions)
+onMounted(() => {
+  fetchEnrolledCourses()
+  fetchSubmissions()
+})
 </script>
 
 <style scoped lang="scss">
 @use '@/styles/variables.scss' as *;
 
 .profile-page {
-  padding: 0 0 80px;
-  min-height: calc(100vh - 64px);
-}
-
-.profile-hero {
-  position: relative;
-  padding-top: 72px;
-  margin-bottom: 32px;
-  overflow: hidden;
-  
-  .hero-bg {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 200px;
-    background: linear-gradient(160deg, #0f766e 0%, #0d6560 50%, #064e3b 100%);
-    
-    &::after {
-      content: '';
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 80px;
-      background: linear-gradient(to top, $bg-color, transparent);
-    }
-  }
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 20px 80px;
 }
 
 .profile-header {
-  position: relative;
-  z-index: 1;
   display: flex;
-  align-items: flex-end;
-  gap: 24px;
-  padding: 0 24px 0;
-  max-width: 1400px;
-  margin: 0 auto;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #ebeef5;
+  margin-bottom: 20px;
+
+  .profile-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .profile-right {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
 }
 
 .profile-avatar {
-  border: 4px solid white;
-  box-shadow: $shadow-lg;
   flex-shrink: 0;
-  background: $primary-light;
+  background: #f0f7ff;
   color: $primary-color;
-  font-size: 2rem;
+  font-size: 1.5rem;
   font-weight: 700;
 }
 
 .profile-info {
-  flex: 1;
-  padding-bottom: 8px;
-  
   h1 {
-    font-size: 1.6rem;
-    font-weight: 700;
+    font-size: 1.3rem;
+    font-weight: 600;
     color: $text-primary;
-    margin-bottom: 4px;
-    letter-spacing: -0.02em;
+    margin: 0 0 4px;
   }
-  
   .bio {
     color: $text-secondary;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
+    margin: 0;
   }
 }
 
 .profile-stats {
   display: flex;
   align-items: center;
-  gap: 20px;
-  padding-bottom: 8px;
+  gap: 16px;
 }
 
 .stat-item {
   text-align: center;
-  
   .stat-value {
     display: block;
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: $primary-color;
-    letter-spacing: -0.02em;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: $text-primary;
   }
-  
   .stat-label {
-    font-size: 0.8rem;
-    color: $text-muted;
-    font-weight: 500;
+    font-size: 0.75rem;
+    color: $text-secondary;
   }
 }
 
 .stat-divider {
   width: 1px;
-  height: 32px;
-  background: $border-color;
+  height: 28px;
+  background: #e4e7ed;
 }
 
 .profile-content {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 0 24px;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #ebeef5;
+  padding: 0 20px 20px;
 }
 
 .profile-tabs {
-  :deep(.el-tabs__header) {
-    margin-bottom: 24px;
-  }
-  
-  :deep(.el-tabs__item) {
-    font-weight: 600;
-    font-size: 0.95rem;
-  }
-  
-  :deep(.el-tabs__active-bar) {
-    background-color: $primary-color;
-  }
-  
-  :deep(.el-tabs__item.is-active) {
-    color: $primary-color;
-  }
-  
-  :deep(.el-tabs__item:hover) {
-    color: $primary-color;
-  }
+  :deep(.el-tabs__header) { margin-bottom: 20px; }
+  :deep(.el-tabs__item) { font-weight: 500; font-size: 0.9rem; }
+  :deep(.el-tabs__active-bar) { background-color: $primary-color; }
+  :deep(.el-tabs__item.is-active) { color: $primary-color; }
+  :deep(.el-tabs__item:hover) { color: $primary-color; }
 }
 
 .course-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
 }
 
 .course-card {
-  background: white;
-  border-radius: $radius-md;
-  padding: 24px;
-  box-shadow: $shadow-card;
-  border: 1px solid $border-color;
-  transition: all $transition-base;
-  
-  &:hover {
-    box-shadow: $shadow-card-hover;
-    border-color: $primary-border;
-  }
+  padding: 16px;
+  border: 1px solid #ebeef5;
+  border-radius: 6px;
+  transition: border-color 0.2s;
+  &:hover { border-color: #c0c4cc; }
 }
 
 .course-info h3 {
-  margin-bottom: 14px;
+  margin: 0 0 12px;
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 0.95rem;
   color: $text-primary;
 }
 
@@ -390,130 +353,71 @@ onMounted(fetchSubmissions)
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 10px;
-  font-size: 0.85rem;
-  
-  .completed {
-    color: #16a34a;
-    font-weight: 600;
-  }
-  
-  .in-progress {
-    color: $primary-color;
-    font-weight: 600;
-  }
-  
-  .progress-text {
-    color: $text-muted;
-    font-weight: 500;
-  }
+  margin-top: 8px;
+  font-size: 0.8rem;
+  .completed { color: #16a34a; font-weight: 500; }
+  .in-progress { color: $primary-color; font-weight: 500; }
+  .progress-text { color: $text-secondary; }
 }
 
 .submission-list {
-  background: white;
-  border-radius: $radius-md;
+  border: 1px solid #ebeef5;
+  border-radius: 6px;
   overflow: hidden;
-  box-shadow: $shadow-card;
-  border: 1px solid $border-color;
 }
 
 .submission-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 24px;
-  border-bottom: 1px solid $border-light;
-  transition: background $transition-fast;
-  
-  &:last-child {
-    border-bottom: none;
-  }
-  
-  &:hover {
-    background: $primary-light;
-  }
+  padding: 12px 16px;
+  border-bottom: 1px solid #f2f3f5;
+  &:last-child { border-bottom: none; }
+  &:hover { background: #fafafa; }
 }
 
 .submission-info {
   display: flex;
   align-items: center;
-  gap: 12px;
-  
-  .problem-title {
-    font-weight: 600;
-    color: $text-primary;
-    font-size: 0.95rem;
-  }
+  gap: 10px;
+  .problem-title { font-weight: 500; color: $text-primary; font-size: 0.9rem; }
 }
 
 .difficulty-tag {
-  padding: 3px 10px;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  
-  &.easy { background: $color-easy-bg; color: $color-easy-text; }
-  &.medium { background: $color-medium-bg; color: $color-medium-text; }
-  &.hard { background: $color-hard-bg; color: $color-hard-text; }
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  &.easy { background: #f0f9eb; color: #67c23a; }
+  &.medium { background: #fdf6ec; color: #e6a23c; }
+  &.hard { background: #fef0f0; color: #f56c6c; }
 }
 
 .submission-meta {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   color: $text-secondary;
-  font-size: 0.85rem;
-  
+  font-size: 0.8rem;
   .status {
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-weight: 600;
-    font-size: 0.8rem;
-    
-    &.accepted { background: $color-easy-bg; color: $color-easy-text; }
-    &.wrong_answer { background: $color-hard-bg; color: $color-hard-text; }
-  }
-  
-  .language {
-    color: $text-muted;
+    padding: 2px 8px;
+    border-radius: 10px;
     font-weight: 500;
+    font-size: 0.75rem;
+    &.accepted { background: #f0f9eb; color: #67c23a; }
+    &.wrong_answer { background: #fef0f0; color: #f56c6c; }
   }
-  
-  .time {
-    color: $text-muted;
-  }
+  .language { color: $text-secondary; }
+  .time { color: #c0c4cc; }
 }
 
 .settings-section {
-  background: white;
-  border-radius: $radius-md;
-  padding: 32px;
-  max-width: 500px;
-  box-shadow: $shadow-card;
-  border: 1px solid $border-color;
-  
+  max-width: 480px;
   h3 {
-    margin-bottom: 24px;
-    font-size: 1.1rem;
-    font-weight: 700;
+    margin: 0 0 20px;
+    font-size: 1rem;
+    font-weight: 600;
     color: $text-primary;
-    letter-spacing: -0.01em;
-  }
-}
-
-.settings-form {
-  :deep(.el-input__wrapper) {
-    border-radius: $radius-sm;
-    box-shadow: 0 0 0 1px $border-color inset;
-    transition: all $transition-base;
-    
-    &:hover {
-      box-shadow: 0 0 0 1px $primary-border inset;
-    }
-    
-    &.is-focus {
-      box-shadow: 0 0 0 1px $primary-color inset, 0 0 0 3px rgba(15, 118, 110, 0.1);
-    }
   }
 }
 </style>

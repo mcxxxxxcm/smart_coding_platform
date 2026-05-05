@@ -30,7 +30,16 @@ export class ExamService {
           title: q.title,
           difficulty: q.difficulty,
           category: q.category,
-          score: q.score
+          score: q.score,
+          description: q.description,
+          input_format: q.input_format,
+          output_format: q.output_format,
+          examples: typeof q.examples === 'string' ? JSON.parse(q.examples) : q.examples,
+          constraints: q.constraints,
+          hints: typeof q.hints === 'string' ? JSON.parse(q.hints) : q.hints,
+          template_code: typeof q.template_code === 'string' ? JSON.parse(q.template_code) : q.template_code,
+          time_limit: q.time_limit,
+          memory_limit: q.memory_limit
         })),
         hasSubmitted,
         attemptId: attempt?.id || null
